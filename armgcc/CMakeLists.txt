@@ -48,7 +48,14 @@ include(${ProjDirPath}/flags.cmake)
 include(${ProjDirPath}/config.cmake)
 
 add_executable(${MCUX_SDK_PROJECT_NAME} 
-
+"${ProjDirPath}/../FreeRTOSConfig.h"
+"${ProjDirPath}/../rpmsg_config.h"
+"${ProjDirPath}/../realtimed.c"
+"${ProjDirPath}/../realtimed.h"
+"${ProjDirPath}/../rsc_table.c"
+"${ProjDirPath}/../rsc_table.h"
+"${ProjDirPath}/../remoteproc.h"
+"${ProjDirPath}/../srtm_config.h"
 )
 
 target_include_directories(${MCUX_SDK_PROJECT_NAME} PRIVATE
