@@ -66,6 +66,10 @@ add_executable(${MCUX_SDK_PROJECT_NAME}
 "${ProjDirPath}/../lib/libfdt/fdt_strerror.c"
 "${ProjDirPath}/../lib/libfdt/fdt_sw.c"
 "${ProjDirPath}/../lib/libfdt/fdt_wip.c"
+"${ProjDirPath}/../board/clock_config.c"
+"${ProjDirPath}/../board/board.c"
+"${ProjDirPath}/../board/board_descr.c"
+"${ProjDirPath}/../board/pinmux.c"
 )
 
 target_include_directories(${MCUX_SDK_PROJECT_NAME} PRIVATE
