@@ -56,6 +56,16 @@ add_executable(${MCUX_SDK_PROJECT_NAME}
 "${ProjDirPath}/../rsc_table.h"
 "${ProjDirPath}/../remoteproc.h"
 "${ProjDirPath}/../srtm_config.h"
+"${ProjDirPath}/../lib/libfdt/fdt.c"
+"${ProjDirPath}/../lib/libfdt/fdt_addresses.c"
+"${ProjDirPath}/../lib/libfdt/fdt_check.c"
+"${ProjDirPath}/../lib/libfdt/fdt_empty_tree.c"
+"${ProjDirPath}/../lib/libfdt/fdt_overlay.c"
+"${ProjDirPath}/../lib/libfdt/fdt_ro.c"
+"${ProjDirPath}/../lib/libfdt/fdt_rw.c"
+"${ProjDirPath}/../lib/libfdt/fdt_strerror.c"
+"${ProjDirPath}/../lib/libfdt/fdt_sw.c"
+"${ProjDirPath}/../lib/libfdt/fdt_wip.c"
 )
 
 target_include_directories(${MCUX_SDK_PROJECT_NAME} PRIVATE
