@@ -19,10 +19,11 @@
 #include "srtm_peercore.h"
 #include "srtm_message.h"
 #include <srtm/srtm_rpmsg_endpoint.h>
+#include <srtm/srtm_i2c_service.h>
 #include <srtm/srtm_lfcl_service.h>
 #include <srtm/app_srtm.h>
 #include <board/board.h>
-
+#include <board/board_i2c.h>
 #include "fsl_mu.h"
 #include "fsl_wuu.h"
 #include "fsl_upower.h"
@@ -65,6 +66,7 @@ static bool support_dsl_for_apd = false; /* true: support deep sleep mode; false
 
 static srtm_dispatcher_t disp;
 static srtm_peercore_t core;
+static struct srtm_i2c_adapter srtm_i2c_adapter;
 static SemaphoreHandle_t monSig;
 static struct rpmsg_lite_instance *rpmsgHandle;
 static app_rpmsg_monitor_t rpmsgMonitor;
@@ -505,6 +507,11 @@ static void APP_SRTM_Linkup(void)
     rpmsgConfig.peerAddr    = RL_ADDR_ANY;
     rpmsgConfig.rpmsgHandle = rpmsgHandle;
 
+    /* Create and add SRTM I2C channel to peer core*/
+    rpmsgConfig.epName = APP_SRTM_I2C_CHANNEL_NAME;
+    chan               = SRTM_RPMsgEndpoint_Create(&rpmsgConfig);
+    SRTM_PeerCore_AddChannel(core, chan);
+
     /* Create and add SRTM Life Cycle channel to peer core */
     rpmsgConfig.epName = APP_SRTM_LFCL_CHANNEL_NAME;
     chan               = SRTM_RPMsgEndpoint_Create(&rpmsgConfig);
@@ -802,6 +809,27 @@ void APP_SRTM_PostCopyCallback()
 }
 #endif
 
+static void APP_SRTM_InitI2CDevice(struct board_descr *bdescr)
+{
+    struct i2c_adapter *i2c_adapter = &bdescr->i2c_adapter;
+    struct i2c_bus *i2c_buses = i2c_adapter->i2c_buses;
+    int i;
+
+    srtm_i2c_adapter.i2c_adapter = i2c_adapter;
+
+    for(i = 0; i < i2c_adapter->num_buses; i++){
+        i2c_adapter->ops.init(&i2c_buses[i]);
+    }
+}
+
+static void APP_SRTM_InitI2CService(struct board_descr *bdescr)
+{
+    PRINTF("APP_SRTM: Start %s\r\n", __func__);
+    APP_SRTM_InitI2CDevice(bdescr);
+    SRTM_I2CService_Create(&srtm_i2c_adapter);
+    SRTM_Dispatcher_RegisterService(disp, srtm_i2c_adapter.service);
+}
+
 static void APP_SRTM_A35ResetHandler(void)
 {
     portBASE_TYPE taskToWake = pdFALSE;
@@ -1005,6 +1033,7 @@ static void APP_SRTM_InitLfclService(struct board_descr *bdescr)
 
 static void APP_SRTM_InitServices(struct board_descr *bdescr)
 {
+    APP_SRTM_InitI2CService(bdescr);
     APP_SRTM_InitLfclService(bdescr);
 }
 
@@ -1269,7 +1298,9 @@ void APP_SRTM_Suspend(void)
 
 void APP_SRTM_Resume(bool resume)
 {
-    /* TODO: */
+    struct board_descr *bdescr = get_board_description();
+    
+    APP_SRTM_InitI2CDevice(bdescr);
 }
 
 void APP_SRTM_SetRpmsgMonitor(app_rpmsg_monitor_t monitor, void *param)
