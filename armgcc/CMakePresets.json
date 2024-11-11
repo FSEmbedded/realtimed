@@ -37,18 +37,7 @@
       }
     }
   ],
-  "buildPresets": [
-    {
-      "name": "debug",
-      "displayName": "debug",
-      "configurePreset": "debug"
-    },
-    {
-      "name": "release",
-      "displayName": "release",
-      "configurePreset": "release"
-    }
-  ],
+  "buildPresets": [],
   "include": [
     "mcux_include.json"
   ]

@@ -1,0 +1,26 @@
+{
+  "configurations": [
+    {
+      "type": "mcuxpresso-debug",
+      "name": "Debug project configuration",
+      "request": "launch",
+      "cwd": "${workspaceRoot}",
+    
+      "executable": "",
+      "stopAtSymbol": "main",
+      "probeSerialNumber": "",
+      "isAttach": false,
+      "probeType": "",
+      "skipBuildBeforeDebug": false,
+      "skipPreFlashActions": false,
+    
+      "gdbInitCommands": [
+        "set remotetimeout 600",
+        "set debug-file-directory",
+        "set non-stop off"
+      ],
+    
+      "showDevDebugOutput": "none"
+    }
+  ]
+}
