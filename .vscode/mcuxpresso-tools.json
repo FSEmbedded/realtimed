@@ -11,11 +11,10 @@
   },
   "projectType": "sdk-freestanding",
   "sdk": {
-    "version": "2.16.000",
-    "path": "c:\\Users\\senatore\\Documents\\MX8ULP\\CM33_Projects\\__repo__",
     "boardId": "evkmimx8ulp",
     "deviceId": "MIMX8UD7xxx08",
     "coreId": "cm33_MIMX8UD7",
-    "partId": "MIMX8UD7CVP08"
+    "version": "",
+    "path": "c:\\Users\\senatore\\Documents\\MX8ULP\\CM33_Projects\\__repo__"
   }
 }

@@ -40,7 +40,7 @@ set(MCUX_BUILD_TYPES debug release)
 set(MCUX_SDK_PROJECT_NAME realtimed)
 
 if (NOT DEFINED SdkRootDirPath)
-    SET(SdkRootDirPath ${ProjDirPath}/../../../../..)
+    SET(SdkRootDirPath ${ProjDirPath}/../../__repo__)
 endif()
 
 include(${ProjDirPath}/flags.cmake)
@@ -56,6 +56,11 @@ add_executable(${MCUX_SDK_PROJECT_NAME}
 "${ProjDirPath}/../rsc_table.h"
 "${ProjDirPath}/../remoteproc.h"
 "${ProjDirPath}/../srtm_config.h"
+"${ProjDirPath}/../board/clock_config.c"
+"${ProjDirPath}/../board/board.c"
+"${ProjDirPath}/../board/board_uart.c"
+"${ProjDirPath}/../board/board_descr.c"
+"${ProjDirPath}/../board/pinmux.c"
 "${ProjDirPath}/../lib/libfdt/fdt.c"
 "${ProjDirPath}/../lib/libfdt/fdt_addresses.c"
 "${ProjDirPath}/../lib/libfdt/fdt_check.c"
@@ -66,10 +71,9 @@ add_executable(${MCUX_SDK_PROJECT_NAME}
 "${ProjDirPath}/../lib/libfdt/fdt_strerror.c"
 "${ProjDirPath}/../lib/libfdt/fdt_sw.c"
 "${ProjDirPath}/../lib/libfdt/fdt_wip.c"
-"${ProjDirPath}/../board/clock_config.c"
-"${ProjDirPath}/../board/board.c"
-"${ProjDirPath}/../board/board_descr.c"
-"${ProjDirPath}/../board/pinmux.c"
+"${ProjDirPath}/../srtm/app_srtm.c"
+"${ProjDirPath}/../srtm/channels/srtm_rpmsg_endpoint.c"
+"${ProjDirPath}/../srtm/services/srtm_lfcl_service.c"
 )
 
 target_include_directories(${MCUX_SDK_PROJECT_NAME} PRIVATE
@@ -79,7 +83,7 @@ target_include_directories(${MCUX_SDK_PROJECT_NAME} PRIVATE
 
 set_source_files_properties("${ProjDirPath}/../FreeRTOSConfig.h" PROPERTIES COMPONENT_CONFIG_FILE "middleware_freertos-kernel_template")
 
-include(${SdkRootDirPath}/devices/MIMX8UD7/all_lib_device.cmake)
+include(${SdkRootDirPath}/core/devices/MIMX8UD7/all_lib_device.cmake)
 
 IF(NOT DEFINED TARGET_LINK_SYSTEM_LIBRARIES)  
     SET(TARGET_LINK_SYSTEM_LIBRARIES "-lm -lc -lgcc -lnosys")  
