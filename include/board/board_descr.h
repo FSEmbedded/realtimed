@@ -15,6 +15,7 @@ struct board_descr {
     struct dbg_info dbg_info;
     struct uart_adapter uart_adapter;
     struct i2c_adapter i2c_adapter;
+    struct io_adapter io_adapter;
 };
 
 /**

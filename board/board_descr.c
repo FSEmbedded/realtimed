@@ -331,6 +331,10 @@ int BOARD_InitBoardDescr(enum board_types btype)
     if(ret)
         return ret;
     
+    ret = init_io_adapter(&bdescr->io_adapter, io_devs, btype);
+    if(ret)
+        return ret;
+    
     gd_board_descr = bdescr;
     return 0;
 }
