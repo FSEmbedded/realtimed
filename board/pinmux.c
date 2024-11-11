@@ -519,11 +519,11 @@ static void BOARD_InitIOPins(enum board_types btype)
 		// 	BOARD_InitIOOSM();
 		// 	break;
 #endif
-#ifdef 
+#ifdef CONFIG_BOARD_ARMSTONEMX8ULP
 		// case BT_ARMSTONEMX8ULP:
 		// 	BOARD_InitIOArmStone();
 		// 	break;
-#endif
+#endif /* CONFIG_BOARD_ARMSTONEMX8ULP */
 		default:
 			break;
 	}

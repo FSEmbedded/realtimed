@@ -41,8 +41,6 @@ void initTask(void *pvParameters)
 
     bdescr = get_board_description();
     BOARD_InitPeripherie(bdescr);
-    BOARD_carrier_en(btype);
-    BOARD_InitDebugConsole(&bdescr->dbg_info);
 
     PRINTF("\r\n############  F&S realtime DAEMON ############\n\r\n");
     print_board(bdescr->btype);

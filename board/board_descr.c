@@ -319,23 +319,21 @@ int BOARD_InitBoardDescr(enum board_types btype)
 
     bdescr->btype = btype;
 
-   /* TODO: Add Adapter init */
+    ret = init_dbg_info(&bdescr->dbg_info, uart_devs, btype);
+    if(ret)
+        return ret;
+
+    ret = init_uart_adapter(&bdescr->uart_adapter, uart_devs, btype);
+    if(ret)
+        return ret;
     
     gd_board_descr = bdescr;
     return 0;
 }
 
-/**
- * TODO: FIXUP TPM CLOCK
- * TPM 2 and 3 Clocks does not work!
- */
 void BOARD_InitPeripherie(struct board_descr *bdescr)
 {    
     struct dbg_info *dbg_info = &bdescr->dbg_info;
-    struct uart_adapter *uart_adapter = &bdescr->uart_adapter;
-    struct i2c_adapter *i2c_adapter = &bdescr->i2c_adapter;
-    int i;
-
 
     CLOCK_EnableClock(kCLOCK_Dma0Ch0);
     CLOCK_EnableClock(kCLOCK_Dma0Ch16);
@@ -343,14 +341,14 @@ void BOARD_InitPeripherie(struct board_descr *bdescr)
     CLOCK_EnableClock(kCLOCK_Wuu0);
     CLOCK_EnableClock(kCLOCK_Bbnsm);
 
-    /* TODO: init Adapter, if needed */
+    BOARD_InitDebugConsole(dbg_info);
 
-    BOARD_carrier_en();
+    BOARD_carrier_en(bdescr);
 }
 
 
 #if defined(CONFIG_BOARD_ARMSTONEMX8ULP) || defined(CONFIG_BOARD_OSMSFMX8ULP)
-void BOARD_carrier_en()
+void BOARD_carrier_en(struct board_descr *bdescr)
 {
 /* TODO: */    
 }

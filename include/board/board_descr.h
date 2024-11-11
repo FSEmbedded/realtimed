@@ -12,14 +12,47 @@
 
 struct board_descr {
     enum board_types btype;
-    /* TODO: */
+    struct dbg_info dbg_info;
+    struct uart_adapter uart_adapter;
 };
 
+/**
+ * @brief read BOARD-CFG to determine board-type
+ * 
+ * @return board_types
+ */
 int BOARD_get_type(void);
+
+/**
+ * @brief get ptr to board_descr
+ * 
+ * @return ptr to board_descr
+ */
 struct board_descr *get_board_description(void);
+
+/**
+ * @brief initialise Board-Description
+ * @param btype: Board Type
+ * 
+ * @return 0 or -ERRNO
+ */
 int BOARD_InitBoardDescr(enum board_types btype);
+
+/**
+ * @brief init clock of Peripherie,
+ * that is not handled by adapter descriptions
+ * 
+ * @param bdescr: ptr to board description
+ */
 void BOARD_InitPeripherie(struct board_descr *bdescr);
-void BOARD_carrier_en();
+
+/**
+ * @brief set GPIO for CARRIER_PWR_EN according to OSM Spec.
+ *
+ * @param btype: Board Type
+ */
+void BOARD_carrier_en(struct board_descr *bdescr);
+
 void print_board(enum board_types btype);
 
 #endif /* __BOARD_DESCR_H */
