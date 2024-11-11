@@ -20,6 +20,7 @@
 #include "srtm_message.h"
 #include <srtm/srtm_rpmsg_endpoint.h>
 #include <srtm/srtm_i2c_service.h>
+#include <srtm/srtm_io_service.h>
 #include <srtm/srtm_lfcl_service.h>
 #include <srtm/app_srtm.h>
 #include <board/board.h>
@@ -67,6 +68,7 @@ static bool support_dsl_for_apd = false; /* true: support deep sleep mode; false
 static srtm_dispatcher_t disp;
 static srtm_peercore_t core;
 static struct srtm_i2c_adapter srtm_i2c_adapter;
+static struct srtm_io_adapter srtm_io_adapter;
 static SemaphoreHandle_t monSig;
 static struct rpmsg_lite_instance *rpmsgHandle;
 static app_rpmsg_monitor_t rpmsgMonitor;
@@ -512,6 +514,11 @@ static void APP_SRTM_Linkup(void)
     chan               = SRTM_RPMsgEndpoint_Create(&rpmsgConfig);
     SRTM_PeerCore_AddChannel(core, chan);
 
+    /* Create and add SRTM IO channel to peer core */
+    rpmsgConfig.epName = APP_SRTM_IO_CHANNEL_NAME;
+    chan               = SRTM_RPMsgEndpoint_Create(&rpmsgConfig);
+    SRTM_PeerCore_AddChannel(core, chan);
+
     /* Create and add SRTM Life Cycle channel to peer core */
     rpmsgConfig.epName = APP_SRTM_LFCL_CHANNEL_NAME;
     chan               = SRTM_RPMsgEndpoint_Create(&rpmsgConfig);
@@ -543,9 +550,41 @@ static void APP_SRTM_InitPeerCore(void)
     }
 }
 
+static void APP_SRTM_GpioReset(void)
+{
+    struct board_descr *bdescr = get_board_description();
+    struct io_adapter *io_adapter = &bdescr->io_adapter;
+    struct io_iface *io_iface = NULL;
+    struct io_pin *io_pin = NULL;
+    int i0, i1;
+
+    for(i0 = 0; i0 < io_adapter->num_gpio; i0++){
+        io_iface = &io_adapter->io_iface[i0];
+
+        for(i1 = 0; i1 < io_iface->num_pins; i1++){
+            io_pin = &io_iface->io_pins[i1];
+            
+            if(io_pin->timer)
+                xTimerStop(io_pin->timer, portMAX_DELAY);
+            
+            if(io_pin->overridden){
+                /* The IO is configured by CM33 instead of CA35, don't reset HW configuration. */
+                io_pin->event  = IO_EventNone;
+                io_pin->wakeup = false;
+            } else {
+                io_adapter->ops.confIRQEvent(io_adapter, io_iface->ifaceID, io_pin->pinID, IO_EventNone, false);
+            }
+        }
+    }
+
+    /* Then reset IO service */
+    SRTM_IoService_Reset(srtm_io_adapter.service, core);
+}
+
 static void APP_SRTM_ResetServices(void)
 {
     /* When CA35 resets, we need to avoid async event to send to CA35. Audio and IO services have async events. */
+    APP_SRTM_GpioReset();
 }
 
 static void APP_SRTM_DeinitPeerCore(void)
@@ -830,6 +869,70 @@ static void APP_SRTM_InitI2CService(struct board_descr *bdescr)
     SRTM_Dispatcher_RegisterService(disp, srtm_i2c_adapter.service);
 }
 
+void APP_SRTM_InitIODevice(struct board_descr *bdescr)
+{
+    struct io_adapter *io_adapter = &bdescr->io_adapter;
+    struct io_iface *io_iface;
+    int i;
+
+    srtm_io_adapter.io_adapter = io_adapter;
+
+    for(i = 0; i < io_adapter->num_gpio; i++){
+        io_iface = &io_adapter->io_iface[i];
+        io_adapter->ops.init_iface(io_adapter, io_iface);
+    }
+}
+
+static void APP_SRTM_InitIOService(struct board_descr *bdescr)
+{
+    enum board_types btype = bdescr->btype;
+    srtm_status_t status;
+
+    PRINTF("APP_SRTM: Start %s\r\n", __func__);
+    APP_SRTM_InitIODevice(bdescr);
+    /* WUU can be used for IO wakeup */
+    NVIC_SetPriority(WUU0_IRQn, APP_WUU_IRQ_PRIO);
+    status = SRTM_IoService_Create(&srtm_io_adapter);
+    if(status){
+        PRINTF("APP_SRTM: Failed to Start %s\r\n", __func__);
+        return;
+    }
+
+    /* Register All IOs in RTD */
+    switch(btype){
+#ifdef CONFIG_BOARD_PICOCOREMX8ULP
+        case BT_PICOCOREMX8ULP:
+            SRTM_IoService_RegisterPin(srtm_io_adapter.service, CONFIG_GPIOA_IFACEID, PCORE_GPIOA_GPIO_J1_44, NULL);
+            SRTM_IoService_RegisterPin(srtm_io_adapter.service, CONFIG_GPIOA_IFACEID, PCORE_GPIOA_GPIO_J1_46, NULL);
+            SRTM_IoService_RegisterPin(srtm_io_adapter.service, CONFIG_GPIOA_IFACEID, PCORE_GPIOA_I2C_IRQ_B, NULL);
+            SRTM_IoService_RegisterPin(srtm_io_adapter.service, CONFIG_GPIOA_IFACEID, PCORE_GPIOA_I2C_RTC_IRQ, NULL);
+            SRTM_IoService_RegisterPin(srtm_io_adapter.service, CONFIG_GPIOB_IFACEID, PCORE_GPIOB_BT_IRQ, NULL);
+            SRTM_IoService_RegisterPin(srtm_io_adapter.service, CONFIG_GPIOB_IFACEID, PCORE_GPIOB_WLAN_HOST_WAKE, NULL);
+            SRTM_IoService_RegisterPin(srtm_io_adapter.service, CONFIG_GPIOB_IFACEID, PCORE_GPIOB_WLAN_WAKE_HOST, NULL);
+            SRTM_IoService_RegisterPin(srtm_io_adapter.service, CONFIG_GPIOC_IFACEID, PCORE_GPIOC_GPIO_J2_100, NULL);
+            SRTM_IoService_RegisterPin(srtm_io_adapter.service, CONFIG_GPIOC_IFACEID, PCORE_GPIOC_GPIO_J2_84, NULL);
+            SRTM_IoService_RegisterPin(srtm_io_adapter.service, CONFIG_GPIOC_IFACEID, PCORE_GPIOC_GPIO_J2_86, NULL);
+            SRTM_IoService_RegisterPin(srtm_io_adapter.service, CONFIG_GPIOC_IFACEID, PCORE_GPIOC_GPIO_J2_88, NULL);
+            SRTM_IoService_RegisterPin(srtm_io_adapter.service, CONFIG_GPIOC_IFACEID, PCORE_GPIOC_GPIO_J2_90, NULL);
+            SRTM_IoService_RegisterPin(srtm_io_adapter.service, CONFIG_GPIOC_IFACEID, PCORE_GPIOC_GPIO_J2_92, NULL);
+            SRTM_IoService_RegisterPin(srtm_io_adapter.service, CONFIG_GPIOC_IFACEID, PCORE_GPIOC_GPIO_J2_98, NULL);
+            break;
+#endif /* CONFIG_BOARD_PICOCOREMX8ULP */
+#ifdef CONFIG_BOARD_OSMSFMX8ULP
+        case BT_OSMSFMX8ULP:
+            break;
+#endif /* CONFIG_BOARD_OSMSFMX8ULP */
+#ifdef CONFIG_BOARD_ARMSTONEMX8ULP
+        case BT_ARMSTONEMX8ULP:
+            break;
+#endif /* CONFIG_BOARD_ARMSTONEMX8ULP */
+
+        default:
+            break;
+    }
+    SRTM_Dispatcher_RegisterService(disp, srtm_io_adapter.service);
+}
+
 static void APP_SRTM_A35ResetHandler(void)
 {
     portBASE_TYPE taskToWake = pdFALSE;
@@ -1034,6 +1137,7 @@ static void APP_SRTM_InitLfclService(struct board_descr *bdescr)
 static void APP_SRTM_InitServices(struct board_descr *bdescr)
 {
     APP_SRTM_InitI2CService(bdescr);
+    APP_SRTM_InitIOService(bdescr);
     APP_SRTM_InitLfclService(bdescr);
 }
 
