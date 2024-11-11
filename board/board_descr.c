@@ -326,6 +326,10 @@ int BOARD_InitBoardDescr(enum board_types btype)
     ret = init_uart_adapter(&bdescr->uart_adapter, uart_devs, btype);
     if(ret)
         return ret;
+
+    ret = init_i2c_adapter(&bdescr->i2c_adapter, i2c_devs, btype);
+    if(ret)
+        return ret;
     
     gd_board_descr = bdescr;
     return 0;

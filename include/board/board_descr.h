@@ -14,6 +14,7 @@ struct board_descr {
     enum board_types btype;
     struct dbg_info dbg_info;
     struct uart_adapter uart_adapter;
+    struct i2c_adapter i2c_adapter;
 };
 
 /**

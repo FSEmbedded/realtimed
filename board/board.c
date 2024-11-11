@@ -4,7 +4,7 @@
  * All rights reserved.
  * 
  * Copyright (c) 2024 F&S Elektronik Systeme GmbH
- *
+ * 
  * SPDX-License-Identifier: BSD-3-Clause
  */
 
