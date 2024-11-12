@@ -9,6 +9,7 @@
 
 #include <board/board_dev.h>
 #include "fsl_common.h"
+#include "semphr.h"
 
 enum i2c_type {
     I2C_TYPE_LPI2C  =   0U,
@@ -46,6 +47,7 @@ struct i2c_bus {
     enum i2c_type type;
     uint32_t baudRate_Hz;
     uint8_t switch_idx;
+    SemaphoreHandle_t xSemaphore;
     enum i2c_switch_channel switch_channel;
 };
 
@@ -56,7 +58,7 @@ struct i2c_switch {
 
 struct i2c_adapter;
 struct i2c_ops {
-    void (*init)(struct i2c_bus *i2c_bus);
+    status_t (*init)(struct i2c_bus *i2c_bus);
     struct i2c_bus *(*get_bus_from_idx)(struct i2c_adapter *i2c_adapter, uint8_t busID);
     status_t (*read)(struct i2c_adapter *i2c_adapter,
                     uint8_t busID,

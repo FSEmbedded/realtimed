@@ -51,23 +51,32 @@ static void _I3C_Init(struct i2c_bus *i2c_bus)
     I3C_MasterInit((I3C_Type *)dev->base_addr, &i3c_config, CLOCK_GetI3cClkFreq(dev->instance));
 }
 
-static void BOARD_I2C_Init(struct i2c_bus *i2c_bus)
+static status_t BOARD_I2C_Init(struct i2c_bus *i2c_bus)
 {
     enum i2c_type type = i2c_bus->type;
 
+    /* Init IP */
     CLOCK_SetIpSrc(i2c_bus->dev.ip_name, i2c_bus->dev.ip_src);
     RESET_PeripheralReset(i2c_bus->dev.reset);
 
+    /* Init Mutex */
+    i2c_bus->xSemaphore = xSemaphoreCreateMutex();
+    if(!i2c_bus->xSemaphore)
+        return kStatus_Fail;
+
+    /* Init Driver Instance */
     switch(type){
         case I2C_TYPE_LPI2C:
-            return _LPI2C_Init(i2c_bus);
+            _LPI2C_Init(i2c_bus);
             break;
         case I2C_TYPE_I3C:
-            return _I3C_Init(i2c_bus);
+            _I3C_Init(i2c_bus);
             break;
         default:
             break;
     }
+
+    return kStatus_Success;
 }
 
 static uint32_t _i2c_flags_lut(uint32_t flags, uint32_t type)
@@ -203,6 +212,9 @@ static status_t BOARD_I2C_Read(struct i2c_adapter *i2c_adapter,
 
     type = i2c_bus->type;
 
+    if(xSemaphoreTake(i2c_bus->xSemaphore, ( TickType_t ) pdTICKS_TO_MS(CONFIG_I2C_MUTEX_TAKE_MS) ) != pdTRUE)
+        return kStatus_Fail;
+
     switch(type){
         case I2C_TYPE_LPI2C:
             ret = _LPI2C_Receive((LPI2C_Type *)i2c_bus->dev.base_addr,
@@ -218,6 +230,7 @@ static status_t BOARD_I2C_Read(struct i2c_adapter *i2c_adapter,
             break;
     }
 
+    xSemaphoreGive(i2c_bus->xSemaphore);
     return ret;
 }
 
@@ -240,6 +253,9 @@ static status_t BOARD_I2C_Write(struct i2c_adapter *i2c_adapter,
 
     type = i2c_bus->type;
 
+    if(xSemaphoreTake(i2c_bus->xSemaphore, ( TickType_t ) pdTICKS_TO_MS(CONFIG_I2C_MUTEX_TAKE_MS) ) != pdTRUE)
+        return kStatus_Fail;
+
     switch(type){
         case I2C_TYPE_LPI2C:
             ret = _LPI2C_Send((LPI2C_Type *)i2c_bus->dev.base_addr,
@@ -255,6 +271,7 @@ static status_t BOARD_I2C_Write(struct i2c_adapter *i2c_adapter,
             break;
     }
 
+    xSemaphoreGive(i2c_bus->xSemaphore);
     return ret;
 }
 
