@@ -349,15 +349,24 @@ void BOARD_InitPeripherie(struct board_descr *bdescr)
     CLOCK_EnableClock(kCLOCK_Wuu0);
     CLOCK_EnableClock(kCLOCK_Bbnsm);
 
+    BOARD_carrier_enable(bdescr);
     BOARD_InitDebugConsole(dbg_info);
-
-    BOARD_carrier_en(bdescr);
 }
 
 
 #if defined(CONFIG_BOARD_ARMSTONEMX8ULP) || defined(CONFIG_BOARD_OSMSFMX8ULP)
-void BOARD_carrier_en(struct board_descr *bdescr)
+void BOARD_carrier_enable(struct board_descr *bdescr)
 {
-/* TODO: */    
+    enum board_types btype = bdescr->btype;
+    struct io_adapter *io_adapter = &bdescr->io_adapter;
+
+    switch(btype){
+        case BT_OSMSFMX8ULP:
+        case BT_ARMSTONEMX8ULP:
+            io_adapter->ops.set_output(io_adapter, CONFIG_GPIOB_IFACEID, GPIOB_CARRIER_PWR_EN, IO_ValueHigh);
+            break;
+        default:
+            break;
+    }
 }
 #endif /* CONFIG_BOARD_ARMSTONEMX8ULP || CONFIG_BOARD_OSMSFMX8ULP */

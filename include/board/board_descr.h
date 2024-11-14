@@ -51,9 +51,9 @@ void BOARD_InitPeripherie(struct board_descr *bdescr);
 /**
  * @brief set GPIO for CARRIER_PWR_EN according to OSM Spec.
  *
- * @param btype: Board Type
+ * @param bdescr: Board Description
  */
-void BOARD_carrier_en(struct board_descr *bdescr);
+void BOARD_carrier_enable(struct board_descr *bdescr);
 
 void print_board(enum board_types btype);
 

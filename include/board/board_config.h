@@ -29,6 +29,10 @@
 #define PCORE_GPIOC_GPIO_J2_100     19
 #endif
 
+#if defined(CONFIG_BOARD_OSMSFMX8ULP) || defined(CONFIG_BOARD_ARMSTONEMX8ULP)
+#define GPIOB_CARRIER_PWR_EN 4
+#endif
+
 /* Default settings */
 #define GPIOA_NUM 25
 #define GPIOB_NUM 16
