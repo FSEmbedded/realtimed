@@ -33,6 +33,23 @@
 #define GPIOB_CARRIER_PWR_EN 4
 #endif
 
+#if defined(CONFIG_BOARD_OSMSFMX8ULP)
+#define OSM_GPIOA_GPIO_B_3  0
+#define OSM_GPIOA_GPIO_B_4  24
+#define OSM_GPIOB_CARRIER_PWR_EN    GPIOB_CARRIER_PWR_EN
+#define OSM_GPIOB_GPIO_B_1  5
+#define OSM_GPIOB_GPIO_B_2  6
+#define OSM_GPIOB_CAM_EN    13
+#define OSM_GPIOB_CAM_RST   14
+#define OSM_GPIOC_GPIO_A_0  0
+#define OSM_GPIOC_GPIO_A_1  3
+#define OSM_GPIOC_GPIO_A_2  11
+#define OSM_GPIOC_GPIO_A_3  13
+#define OSM_GPIOC_GPIO_A_4  14
+#define OSM_GPIOC_GPIO_A_5  15
+#define OSM_GPIOC_GPIO_B_0  16
+#endif
+
 /* Default settings */
 #define GPIOA_NUM 25
 #define GPIOB_NUM 16

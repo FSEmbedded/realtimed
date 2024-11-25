@@ -920,6 +920,20 @@ static void APP_SRTM_InitIOService(struct board_descr *bdescr)
 #endif /* CONFIG_BOARD_PICOCOREMX8ULP */
 #ifdef CONFIG_BOARD_OSMSFMX8ULP
         case BT_OSMSFMX8ULP:
+            SRTM_IoService_RegisterPin(srtm_io_adapter.service, CONFIG_GPIOA_IFACEID, OSM_GPIOA_GPIO_B_3, NULL);
+            SRTM_IoService_RegisterPin(srtm_io_adapter.service, CONFIG_GPIOA_IFACEID, OSM_GPIOA_GPIO_B_4, NULL);
+            SRTM_IoService_RegisterPin(srtm_io_adapter.service, CONFIG_GPIOB_IFACEID, OSM_GPIOB_CARRIER_PWR_EN, NULL);
+            SRTM_IoService_RegisterPin(srtm_io_adapter.service, CONFIG_GPIOB_IFACEID, OSM_GPIOB_GPIO_B_1, NULL);
+            SRTM_IoService_RegisterPin(srtm_io_adapter.service, CONFIG_GPIOB_IFACEID, OSM_GPIOB_GPIO_B_2, NULL);
+            SRTM_IoService_RegisterPin(srtm_io_adapter.service, CONFIG_GPIOB_IFACEID, OSM_GPIOB_CAM_EN, NULL);
+            SRTM_IoService_RegisterPin(srtm_io_adapter.service, CONFIG_GPIOB_IFACEID, OSM_GPIOB_CAM_RST, NULL);
+            SRTM_IoService_RegisterPin(srtm_io_adapter.service, CONFIG_GPIOC_IFACEID, OSM_GPIOC_GPIO_A_0, NULL);
+            SRTM_IoService_RegisterPin(srtm_io_adapter.service, CONFIG_GPIOC_IFACEID, OSM_GPIOC_GPIO_A_1, NULL);
+            SRTM_IoService_RegisterPin(srtm_io_adapter.service, CONFIG_GPIOC_IFACEID, OSM_GPIOC_GPIO_A_2, NULL);
+            SRTM_IoService_RegisterPin(srtm_io_adapter.service, CONFIG_GPIOC_IFACEID, OSM_GPIOC_GPIO_A_3, NULL);
+            SRTM_IoService_RegisterPin(srtm_io_adapter.service, CONFIG_GPIOC_IFACEID, OSM_GPIOC_GPIO_A_4, NULL);
+            SRTM_IoService_RegisterPin(srtm_io_adapter.service, CONFIG_GPIOC_IFACEID, OSM_GPIOC_GPIO_A_5, NULL);
+            SRTM_IoService_RegisterPin(srtm_io_adapter.service, CONFIG_GPIOC_IFACEID, OSM_GPIOC_GPIO_B_0, NULL);
             break;
 #endif /* CONFIG_BOARD_OSMSFMX8ULP */
 #ifdef CONFIG_BOARD_ARMSTONEMX8ULP

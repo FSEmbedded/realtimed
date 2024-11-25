@@ -355,9 +355,9 @@ int init_i2c_adapter(struct i2c_adapter *i2c_adapter, struct dev *i2c_devs, enum
             i2c_adapter->i2c_buses = i2c_bus;
 
             /* I2C_B*/
-            _init_i2c_bus(&i2c_bus[0], &i2c_devs[4], 3, I2C_TYPE_I3C);
+            _init_i2c_bus(&i2c_bus[0], &i2c_devs[4], 2, I2C_TYPE_I3C);
             /* I2C_CAM */
-            _init_i2c_bus(&i2c_bus[1], &i2c_devs[2], 4, I2C_TYPE_LPI2C);
+            _init_i2c_bus(&i2c_bus[1], &i2c_devs[2], 3, I2C_TYPE_LPI2C);
             break;
 #endif /* CONFIG_BOARD_PICOCOREMX8ULP */
 #ifdef CONFIG_BOARD_ARMSTONEMX8ULP
