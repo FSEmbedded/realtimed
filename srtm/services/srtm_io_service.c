@@ -86,8 +86,6 @@ static struct srtm_io_pin *SRTM_IoService_FindPin(struct srtm_io_service *handle
     srtm_notification_t notif = NULL;
     uint32_t primask;
 
-    SRTM_DEBUG_MESSAGE(SRTM_DEBUG_VERBOSE_DEBUG, "ENTER %s\r\n", __func__);
-
     primask = DisableGlobalIRQ();
     for (list = handle->pins.next; list != &handle->pins; list = list->next)
     {
@@ -119,8 +117,7 @@ static struct srtm_io_pin *SRTM_IoService_FindPin(struct srtm_io_service *handle
         notif->channel = srtm_pin->channel;
         SRTM_Dispatcher_DeliverNotification(handle->service.dispatcher, notif);
     }
-    
-    SRTM_DEBUG_MESSAGE(SRTM_DEBUG_VERBOSE_DEBUG, "LEAVE %s\r\n", __func__);
+
     return list == &handle->pins ? NULL : srtm_pin;
 }
 
@@ -251,8 +248,6 @@ srtm_status_t SRTM_IoService_Create(struct srtm_io_adapter *adapter)
 {
     struct srtm_io_service *handle;
 
-    SRTM_DEBUG_MESSAGE(SRTM_DEBUG_VERBOSE_INFO, "%s\r\n", __func__);
-
     handle = SRTM_Heap_Malloc(sizeof(struct srtm_io_service));
     if(!handle)
         return SRTM_Status_OutOfMemory;
@@ -277,8 +272,6 @@ void SRTM_IoService_Destroy(srtm_service_t service)
     srtm_list_t *list;
     struct srtm_io_pin *pin;
 
-    SRTM_DEBUG_MESSAGE(SRTM_DEBUG_VERBOSE_INFO, "%s\r\n", __func__);
-
     assert(service);
     /* Service must be unregistered from dispatcher before destroy */
     assert(SRTM_List_IsEmpty(&service->node));
@@ -299,8 +292,6 @@ void SRTM_IoService_Reset(srtm_service_t service, srtm_peercore_t core)
     struct srtm_io_service *handle = (void *)service;
     srtm_list_t *list;
     struct srtm_io_pin *pin;
-
-    SRTM_DEBUG_MESSAGE(SRTM_DEBUG_VERBOSE_INFO, "%s\r\n", __func__);
 
     assert(service);
 

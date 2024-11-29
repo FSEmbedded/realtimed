@@ -4,6 +4,7 @@
  * SPDX-License-Identifier: BSD-3-Clause
  */
 
+#include "FreeRTOS.h"
 #include <board/board.h>
 #include <asm-generic/errno.h>
 #include "fsl_common.h"
@@ -45,7 +46,7 @@ static struct io_pin *get_pin_from_idx(struct io_iface *io_iface, uint8_t pinID)
     return &io_pin[i];
 }
 
-static void set_output(struct io_iface *io_iface, struct io_pin *io_pin)
+static void __set_output(struct io_iface *io_iface, struct io_pin *io_pin)
 {
     struct _rgpio_pin_config pin_config;
 
@@ -59,7 +60,7 @@ static void set_output(struct io_iface *io_iface, struct io_pin *io_pin)
     RGPIO_PinWrite((RGPIO_Type *)io_iface->dev.base_addr, io_pin->pinID, io_pin->value);
 }
 
-static uint32_t get_input(struct io_iface *io_iface, struct io_pin *io_pin)
+static uint32_t __get_input(struct io_iface *io_iface, struct io_pin *io_pin)
 {
     struct _rgpio_pin_config pin_config;
 
@@ -90,7 +91,7 @@ status_t BOARD_IO_set_output(struct io_adapter *io_adapter,
 
     /* set Output Val */
     io_pin->value = value;
-    set_output(io_iface, io_pin);
+    __set_output(io_iface, io_pin);
 
     return kStatus_Success;
 }
@@ -112,7 +113,7 @@ status_t BOARD_IO_get_input(struct io_adapter *io_adapter,
         return kStatus_NoData;
 
     /* return Input val */
-    io_pin->value = get_input(io_iface, io_pin);
+    io_pin->value = __get_input(io_iface, io_pin);
     if(value)
         *value = io_pin->value;
         
@@ -286,17 +287,23 @@ status_t BOARD_IO_confIRQEvent(struct io_adapter *io_adapter,
     return kStatus_Success;
 }
 
-/* TODO:  */
-#ifdef CONFIG_BOARD_PICOCOREMX8ULP
-void GPIOA_PCore_IRQPinHandler(struct io_iface *io_iface, struct io_pin *io_pin)
+static void __IO_IRQPinHandler(struct io_iface *io_iface, struct io_pin *io_pin)
 {
     BaseType_t reschedule = pdFALSE;
+    uint32_t ulPinID = (uint32_t)io_pin->pinID;
 
+    /**
+     * Disable Interrupt for this pin.
+     * The ISR callback should evaluate the cause
+     * of the interrupt and reactivate the pin if necessary.
+     * Note: SRTM_IO Service will reactivate the pin itself.
+     */
+    io_pin->event = IO_EventNone;
+    __confIRQEvent(io_iface, io_pin);
 
-    switch(io_pin->pinID){
-        default:
-            break;
-    }
+    /* Deferred-interrupt-handling */
+    if(io_iface->irqPinHandler)
+        xTimerPendFunctionCallFromISR(io_iface->irqPinHandler, io_iface, ulPinID, &reschedule);
 
     if (reschedule)
     {
@@ -304,142 +311,7 @@ void GPIOA_PCore_IRQPinHandler(struct io_iface *io_iface, struct io_pin *io_pin)
     }
 }
 
-void GPIOB_PCore_IRQPinHandler(struct io_iface *io_iface, struct io_pin *io_pin)
-{
-    BaseType_t reschedule = pdFALSE;
-
-
-    switch(io_pin->pinID){
-        default:
-            break;
-    }
-
-    if (reschedule)
-    {
-        portYIELD_FROM_ISR(reschedule);
-    }
-}
-
-void GPIOC_PCore_IRQPinHandler(struct io_iface *io_iface, struct io_pin *io_pin)
-{
-    BaseType_t reschedule = pdFALSE;
-
-
-    switch(io_pin->pinID){
-        default:
-            break;
-    }
-
-    if (reschedule)
-    {
-        portYIELD_FROM_ISR(reschedule);
-    }
-}
-#endif /* CONFIG_BOARD_PICOCOREMX8ULP */
-
-/* TODO:  */
-#ifdef CONFIG_BOARD_OSMSFMX8ULP
-void GPIOA_OSM_IRQPinHandler(struct io_iface *io_iface, struct io_pin *io_pin)
-{
-    BaseType_t reschedule = pdFALSE;
-
-
-    switch(io_pin->pinID){
-        default:
-            break;
-    }
-
-    if (reschedule)
-    {
-        portYIELD_FROM_ISR(reschedule);
-    }
-}
-
-void GPIOB_OSM_IRQPinHandler(struct io_iface *io_iface, struct io_pin *io_pin)
-{
-    BaseType_t reschedule = pdFALSE;
-
-
-    switch(io_pin->pinID){
-        default:
-            break;
-    }
-
-    if (reschedule)
-    {
-        portYIELD_FROM_ISR(reschedule);
-    }
-}
-
-void GPIOC_OSM_IRQPinHandler(struct io_iface *io_iface, struct io_pin *io_pin)
-{
-    BaseType_t reschedule = pdFALSE;
-
-
-    switch(io_pin->pinID){
-        default:
-            break;
-    }
-
-    if (reschedule)
-    {
-        portYIELD_FROM_ISR(reschedule);
-    }
-}
-#endif /* CONFIG_BOARD_OSMSFMX8ULP */
-
-/* TODO:  */
-#ifdef CONFIG_BOARD_ARMSTONEMX8ULP
-void GPIOA_ArmStone_IRQPinHandler(struct io_iface *io_iface, struct io_pin *io_pin)
-{
-    BaseType_t reschedule = pdFALSE;
-
-
-    switch(io_pin->pinID){
-        default:
-            break;
-    }
-
-    if (reschedule)
-    {
-        portYIELD_FROM_ISR(reschedule);
-    }
-}
-
-void GPIOB_ArmStone_IRQPinHandler(struct io_iface *io_iface, struct io_pin *io_pin)
-{
-    BaseType_t reschedule = pdFALSE;
-
-
-    switch(io_pin->pinID){
-        default:
-            break;
-    }
-
-    if (reschedule)
-    {
-        portYIELD_FROM_ISR(reschedule);
-    }
-}
-
-void GPIOC_ArmStone_IRQPinHandler(struct io_iface *io_iface, struct io_pin *io_pin)
-{
-    BaseType_t reschedule = pdFALSE;
-
-
-    switch(io_pin->pinID){
-        default:
-            break;
-    }
-
-    if (reschedule)
-    {
-        portYIELD_FROM_ISR(reschedule);
-    }
-}
-#endif /* CONFIG_BOARD_ARMSTONEMX8ULP */
-
-void IO_IRQHandler(long GPIO_BASE, long RGPIO_INT_SEL)
+static void __IO_IRQHandler(long GPIO_BASE, long RGPIO_INT_SEL)
 {
     struct board_descr *bdescr = get_board_description();
     struct io_adapter *io_adapter = &bdescr->io_adapter;
@@ -466,39 +338,38 @@ void IO_IRQHandler(long GPIO_BASE, long RGPIO_INT_SEL)
             continue;
 
         RGPIO_ClearPinsInterruptFlags((RGPIO_Type *)GPIO_BASE, RGPIO_INT_SEL, 1<<i);
-        if(io_iface->irqPinHandler)
-            io_iface->irqPinHandler(io_iface, &io_iface->io_pins[i]);
+        __IO_IRQPinHandler(io_iface, &io_iface->io_pins[i]);
     }
 }
 
 void GPIOA_INT0_IRQHandler(void)
 {
-    IO_IRQHandler(GPIOA_BASE, kRGPIO_InterruptOutput1);
+    __IO_IRQHandler(GPIOA_BASE, CONFIG_RGPIO_INTERRUPT_SEL);
 }
 
 void GPIOA_INT1_IRQHandler(void)
 {
-    IO_IRQHandler(GPIOA_BASE, kRGPIO_InterruptOutput2);
+    __IO_IRQHandler(GPIOA_BASE, CONFIG_RGPIO_INTERRUPT_SEL);
 }
 
 void GPIOB_INT0_IRQHandler(void)
 {
-    IO_IRQHandler(GPIOB_BASE, kRGPIO_InterruptOutput1);
+    __IO_IRQHandler(GPIOB_BASE, CONFIG_RGPIO_INTERRUPT_SEL);
 }
 
 void GPIOB_INT1_IRQHandler(void)
 {
-    IO_IRQHandler(GPIOB_BASE, kRGPIO_InterruptOutput2);
+    __IO_IRQHandler(GPIOB_BASE, CONFIG_RGPIO_INTERRUPT_SEL);
 }
 
 void GPIOC_INT0_IRQHandler(void)
 {
-    IO_IRQHandler(GPIOC_BASE, kRGPIO_InterruptOutput1);
+    __IO_IRQHandler(GPIOC_BASE, CONFIG_RGPIO_INTERRUPT_SEL);
 }
 
 void GPIOC_INT1_IRQHandler(void)
 {
-    IO_IRQHandler(GPIOC_BASE, kRGPIO_InterruptOutput2);
+    __IO_IRQHandler(GPIOC_BASE, CONFIG_RGPIO_INTERRUPT_SEL);
 }
 
 static int init_io_iface(struct io_iface *io_iface, struct dev *io_dev, enum board_types btype)
@@ -518,12 +389,7 @@ static int init_io_iface(struct io_iface *io_iface, struct dev *io_dev, enum boa
             io_iface->io_pins = io_pins;
             io_iface->wuu_pins = PTA_wuuPins;
             io_iface->ifaceID = CONFIG_GPIOA_IFACEID;
-            if(btype == BT_PICOCOREMX8ULP)
-                io_iface->irqPinHandler = &GPIOA_PCore_IRQPinHandler;
-            if(btype == BT_OSMSFMX8ULP)
-                io_iface->irqPinHandler = &GPIOA_OSM_IRQPinHandler;
-            if(btype == BT_ARMSTONEMX8ULP)
-                io_iface->irqPinHandler = &GPIOA_ArmStone_IRQPinHandler;
+            io_iface->irqPinHandler = NULL;
             break;
         case GPIOB_BASE:
             io_pins = pvPortMalloc(sizeof(struct io_pin) * GPIOB_NUM);
@@ -534,12 +400,7 @@ static int init_io_iface(struct io_iface *io_iface, struct dev *io_dev, enum boa
             io_iface->io_pins = io_pins;
             io_iface->wuu_pins = PTB_wuuPins;
             io_iface->ifaceID = CONFIG_GPIOB_IFACEID;
-            if(btype == BT_PICOCOREMX8ULP)
-                io_iface->irqPinHandler = &GPIOB_PCore_IRQPinHandler;
-            if(btype == BT_OSMSFMX8ULP)
-                io_iface->irqPinHandler = &GPIOB_OSM_IRQPinHandler;
-            if(btype == BT_ARMSTONEMX8ULP)
-                io_iface->irqPinHandler = &GPIOB_ArmStone_IRQPinHandler;
+            io_iface->irqPinHandler = NULL;
             break;
         case GPIOC_BASE:
             io_pins = pvPortMalloc(sizeof(struct io_pin) * GPIOC_NUM);
@@ -550,12 +411,7 @@ static int init_io_iface(struct io_iface *io_iface, struct dev *io_dev, enum boa
             io_iface->io_pins = io_pins;
             io_iface->wuu_pins = NULL;
             io_iface->ifaceID = CONFIG_GPIOC_IFACEID;
-            if(btype == BT_PICOCOREMX8ULP)
-                io_iface->irqPinHandler = &GPIOC_PCore_IRQPinHandler;
-            if(btype == BT_OSMSFMX8ULP)
-                io_iface->irqPinHandler = &GPIOC_OSM_IRQPinHandler;
-            if(btype == BT_ARMSTONEMX8ULP)
-                io_iface->irqPinHandler = &GPIOC_ArmStone_IRQPinHandler;
+            io_iface->irqPinHandler = NULL;
             break;
     }
 
@@ -614,4 +470,37 @@ int init_io_adapter(struct io_adapter *io_adapter, struct dev *io_devs, enum boa
     io_adapter->ops.init_iface = &init_iface;
     io_adapter->ops.deinit_iface = &deinit_iface;
     return 0;
+}
+
+status_t IO_RegisterIRQCallback(struct io_adapter *io_adapter,
+                uint8_t ifaceID, PendedFunction_t pxCallbackFunction)
+{
+    struct io_iface *io_iface;
+
+    io_iface = get_iface_from_idx(io_adapter, ifaceID);
+    if(!io_iface)
+        return kStatus_Fail;
+
+    if(io_iface->irqPinHandler)
+        return kStatus_Busy;
+
+    if(!pxCallbackFunction)
+        return kStatus_Fail;
+
+    io_iface->irqPinHandler = pxCallbackFunction;
+
+    return kStatus_Success;
+}
+
+status_t IO_unregisterIRQCallback(struct io_adapter *io_adapter, uint8_t ifaceID)
+{
+    struct io_iface *io_iface;
+
+    io_iface = get_iface_from_idx(io_adapter, ifaceID);
+    if(!io_iface)
+        return kStatus_Fail;
+
+    io_iface->irqPinHandler = NULL;
+
+    return kStatus_Success;   
 }

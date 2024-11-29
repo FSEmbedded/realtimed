@@ -63,10 +63,9 @@ struct io_pin {
     uint32_t pinID;
     uint8_t direction;
     uint8_t value;
-    TimerHandle_t timer; /* GPIO glitch detect timer */
     enum io_event event;
     bool wakeup;
-    bool overridden; /* Means the CA35 pin configuration is overridden by CM33 wakeup pin. */
+    bool overridden; /* CA35 pin configuration is overridden by CM33 wakeup pin. */
 };
 
 struct io_iface {
@@ -75,39 +74,90 @@ struct io_iface {
     uint8_t num_pins;
     struct io_pin *io_pins;
     const uint8_t *wuu_pins;
-    void (*irqPinHandler)(struct io_iface *io_iface, struct io_pin *io_pin);
+    void (*irqPinHandler)(void *pvParameter1, uint32_t ulParameter2);
 };
 
 struct io_adapter;
 struct io_ops {
-    /* returns io_pin obj or NULL */
+    /**
+     * @brief
+     * use pin ID to get pin data
+     * @param io_iface: ptr to io_iface
+     * @param pinID: Pin ID
+     * 
+     * @return ptr to io_pin or NULL
+     */
     struct io_pin *(*get_pin_from_idx)(struct io_iface *io_iface, uint8_t pinID);
 
-    /* returns io_iface obj or NULL */
+    /**
+     * @brief
+     * use iface ID to get io_iface data
+     * @param io_adapter: ptr to io_adapter
+     * @param ifaceID: Interface ID
+     * 
+     * @return ptr to io_iface or NULL
+     */
     struct io_iface *(*get_iface_from_idx)(struct io_adapter *io_adapter, uint8_t ifaceID);
 
+    /**
+     * @brief
+     * set IO Output
+     * @param io_adapter: ptr to io_adapter
+     * @param ifaceID: Interface ID
+     * @param pinID: Pin ID
+     * @param value: IO logic Value
+     * @return kStatus_Success or Error
+     */
     status_t (*set_output)(struct io_adapter *io_adapter,
                     uint8_t ifaceID,
                     uint8_t pinID,
                     enum io_value value);
 
+    /**
+     * @brief
+     * Get IO Value
+     * @param io_adapter: ptr to io_adapter
+     * @param ifaceID: Interface ID
+     * @param pinID: Pin ID
+     * @param value: ptr for IO logic Value
+     * @return kStatus_Success or Error
+     */
     status_t (*get_input)(struct io_adapter *io_adapter,
                     uint8_t ifaceID,
                     uint8_t pinID,
                     enum io_value *value);
 
-    /* Configures Interrupt Events and WUU Pins */
+    /**
+     * @brief
+     * configures Interrupts for IOs and Wakeup Unit
+     * @param io_adapter: ptr to io_adapter
+     * @param ifaceID: Interface ID
+     * @param pinID: Pin ID
+     * @param value: Io Event Type
+     * @param wakeup: use as wakeup pin
+     * @return kStatus_Success or Error
+     */
     status_t (*confIRQEvent)(struct io_adapter *io_adapter,
             uint8_t ifaceID,
             uint8_t pinID,
             enum io_event event,
             bool wakeup);
 
-    /* Enables Clock and Interrupts */
+    /**
+     * @brief
+     * Enables Clock and Interrupts for IO_Interfaces
+     * @param io_adapter: ptr to io_adapter
+     * @param io_iface: ptr to io_iface
+     */
     void (*init_iface)(struct io_adapter *io_adapter,
                 struct io_iface *io_iface);
     
-    /* Disables Clock and Interrupts */
+    /**
+     * @brief
+     * Disables Clock and Interrupts
+     * @param io_adapter: ptr to io_adapter
+     * @param io_iface: ptr to io_iface
+     */
     void (*deinit_iface)(struct io_adapter *io_adapter,
                 struct io_iface *io_iface);
 };
@@ -118,16 +168,34 @@ struct io_adapter{
     struct io_ops ops;
 };
 
+/**
+ * @brief
+ * creates IO Description based on board-type
+ * @param io_adapter: ptr to io_adapter
+ * @param io_devs: ptr to all SoC io_devs
+ * @param btype: Board Type
+ * @returns 0 or -ERRNO
+ */
 int init_io_adapter(struct io_adapter *io_adapter, struct dev *io_devs, enum board_types btype);
 
-void GPIOA_PCore_IRQPinHandler(struct io_iface *io_iface, struct io_pin *io_pin);
-void GPIOB_PCore_IRQPinHandler(struct io_iface *io_iface, struct io_pin *io_pin);
-void GPIOC_PCore_IRQPinHandler(struct io_iface *io_iface, struct io_pin *io_pin);
-void GPIOA_OSM_IRQPinHandler(struct io_iface *io_iface, struct io_pin *io_pin);
-void GPIOB_OSM_IRQPinHandler(struct io_iface *io_iface, struct io_pin *io_pin);
-void GPIOC_OSM_IRQPinHandler(struct io_iface *io_iface, struct io_pin *io_pin);
-void GPIOA_ArmStone_IRQPinHandler(struct io_iface *io_iface, struct io_pin *io_pin);
-void GPIOB_ArmStone_IRQPinHandler(struct io_iface *io_iface, struct io_pin *io_pin);
-void GPIOC_ArmStone_IRQPinHandler(struct io_iface *io_iface, struct io_pin *io_pin);
+/**
+ * @brief
+ * register ISR to IO_Interface
+ * @param io_adapter: ptr to io_adapter
+ * @param ifaceID: IO Interface ID
+ * @param pxCallbackFunction: Callback function for ISR
+ * @returns kStatus_Success or Error
+ */
+status_t IO_RegisterIRQCallback(struct io_adapter *io_adapter,
+                uint8_t ifaceID, PendedFunction_t pxCallbackFunction);
+
+/**
+ * @brief
+ * register ISR to IO_Interface
+ * @param io_adapter: ptr to io_adapter
+ * @param ifaceID: IO Interface ID
+ * @returns kStatus_Success or Error
+ */
+status_t IO_unregisterIRQCallback(struct io_adapter *io_adapter, uint8_t ifaceID);
 
 #endif /* __BOARD_IO_H */

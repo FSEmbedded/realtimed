@@ -564,9 +564,6 @@ static void APP_SRTM_GpioReset(void)
         for(i1 = 0; i1 < io_iface->num_pins; i1++){
             io_pin = &io_iface->io_pins[i1];
             
-            if(io_pin->timer)
-                xTimerStop(io_pin->timer, portMAX_DELAY);
-            
             if(io_pin->overridden){
                 /* The IO is configured by CM33 instead of CA35, don't reset HW configuration. */
                 io_pin->event  = IO_EventNone;
@@ -883,6 +880,98 @@ void APP_SRTM_InitIODevice(struct board_descr *bdescr)
     }
 }
 
+void APP_SRTM_GPIOA_ISR_M33(uint8_t pinID)
+{
+}
+
+void APP_SRTM_GPIOB_ISR_M33(uint8_t pinID)
+{
+}
+
+void APP_SRTM_GPIOC_ISR_M33(uint8_t pinID)
+{
+}
+
+void APP_SRTM_IO_ISR(void *pvParameter1, uint32_t ulParameter2)
+{
+    struct io_iface *io_iface = pvParameter1;
+    uint8_t ifaceID = io_iface->ifaceID;
+    uint8_t pinID = (uint8_t) ulParameter2;
+
+    if (AD_CurrentMode == AD_ACT) {
+        SRTM_IoService_NotifyInputEvent(srtm_io_adapter.service, ifaceID, pinID);
+    }
+
+    switch(ifaceID) {
+        case CONFIG_GPIOA_IFACEID:
+            APP_SRTM_GPIOA_ISR_M33(pinID);
+            break;
+        case CONFIG_GPIOB_IFACEID: 
+            APP_SRTM_GPIOB_ISR_M33(pinID);
+            break;
+        case CONFIG_GPIOC_IFACEID:
+            APP_SRTM_GPIOB_ISR_M33(pinID);
+            break;
+        default:
+            break;
+    }
+}
+
+#ifdef CONFIG_BOARD_PICOCOREMX8ULP
+static void APP_SRTM_PCore_InitIOService(struct board_descr *bdescr)
+{
+    struct io_adapter *io_adapter = &bdescr->io_adapter;
+
+    /* Register Pins */
+    SRTM_IoService_RegisterPin(srtm_io_adapter.service, CONFIG_GPIOA_IFACEID, PCORE_GPIOA_GPIO_J1_44, NULL);
+    SRTM_IoService_RegisterPin(srtm_io_adapter.service, CONFIG_GPIOA_IFACEID, PCORE_GPIOA_GPIO_J1_46, NULL);
+    SRTM_IoService_RegisterPin(srtm_io_adapter.service, CONFIG_GPIOA_IFACEID, PCORE_GPIOA_I2C_IRQ_B, NULL);
+    SRTM_IoService_RegisterPin(srtm_io_adapter.service, CONFIG_GPIOA_IFACEID, PCORE_GPIOA_I2C_RTC_IRQ, NULL);
+    SRTM_IoService_RegisterPin(srtm_io_adapter.service, CONFIG_GPIOB_IFACEID, PCORE_GPIOB_BT_IRQ, NULL);
+    SRTM_IoService_RegisterPin(srtm_io_adapter.service, CONFIG_GPIOB_IFACEID, PCORE_GPIOB_WLAN_HOST_WAKE, NULL);
+    SRTM_IoService_RegisterPin(srtm_io_adapter.service, CONFIG_GPIOB_IFACEID, PCORE_GPIOB_WLAN_WAKE_HOST, NULL);
+    SRTM_IoService_RegisterPin(srtm_io_adapter.service, CONFIG_GPIOC_IFACEID, PCORE_GPIOC_GPIO_J2_100, NULL);
+    SRTM_IoService_RegisterPin(srtm_io_adapter.service, CONFIG_GPIOC_IFACEID, PCORE_GPIOC_GPIO_J2_84, NULL);
+    SRTM_IoService_RegisterPin(srtm_io_adapter.service, CONFIG_GPIOC_IFACEID, PCORE_GPIOC_GPIO_J2_86, NULL);
+    SRTM_IoService_RegisterPin(srtm_io_adapter.service, CONFIG_GPIOC_IFACEID, PCORE_GPIOC_GPIO_J2_88, NULL);
+    SRTM_IoService_RegisterPin(srtm_io_adapter.service, CONFIG_GPIOC_IFACEID, PCORE_GPIOC_GPIO_J2_90, NULL);
+    SRTM_IoService_RegisterPin(srtm_io_adapter.service, CONFIG_GPIOC_IFACEID, PCORE_GPIOC_GPIO_J2_92, NULL);
+    SRTM_IoService_RegisterPin(srtm_io_adapter.service, CONFIG_GPIOC_IFACEID, PCORE_GPIOC_GPIO_J2_98, NULL);
+
+    /* Register IRQHandler */
+    IO_RegisterIRQCallback(io_adapter, CONFIG_GPIOA_IFACEID, &APP_SRTM_IO_ISR);
+    IO_RegisterIRQCallback(io_adapter, CONFIG_GPIOB_IFACEID, &APP_SRTM_IO_ISR);
+    IO_RegisterIRQCallback(io_adapter, CONFIG_GPIOC_IFACEID, &APP_SRTM_IO_ISR);
+}
+#endif /* CONFIG_BOARD_PICOCOREMX8ULP */
+
+#ifdef CONFIG_BOARD_OSMSFMX8ULP
+static void APP_SRTM_OSM_InitIOSevice(struct board_descr *bdescr)
+{
+    struct io_adapter *io_adapter = &bdescr->io_adapter;
+    /* Register Pins */
+    SRTM_IoService_RegisterPin(srtm_io_adapter.service, CONFIG_GPIOA_IFACEID, OSM_GPIOA_GPIO_B_3, NULL);
+    SRTM_IoService_RegisterPin(srtm_io_adapter.service, CONFIG_GPIOA_IFACEID, OSM_GPIOA_GPIO_B_4, NULL);
+    SRTM_IoService_RegisterPin(srtm_io_adapter.service, CONFIG_GPIOB_IFACEID, OSM_GPIOB_CARRIER_PWR_EN, NULL);
+    SRTM_IoService_RegisterPin(srtm_io_adapter.service, CONFIG_GPIOB_IFACEID, OSM_GPIOB_GPIO_B_1, NULL);
+    SRTM_IoService_RegisterPin(srtm_io_adapter.service, CONFIG_GPIOB_IFACEID, OSM_GPIOB_GPIO_B_2, NULL);
+    SRTM_IoService_RegisterPin(srtm_io_adapter.service, CONFIG_GPIOB_IFACEID, OSM_GPIOB_CAM_EN, NULL);
+    SRTM_IoService_RegisterPin(srtm_io_adapter.service, CONFIG_GPIOB_IFACEID, OSM_GPIOB_CAM_RST, NULL);
+    SRTM_IoService_RegisterPin(srtm_io_adapter.service, CONFIG_GPIOC_IFACEID, OSM_GPIOC_GPIO_A_0, NULL);
+    SRTM_IoService_RegisterPin(srtm_io_adapter.service, CONFIG_GPIOC_IFACEID, OSM_GPIOC_GPIO_A_1, NULL);
+    SRTM_IoService_RegisterPin(srtm_io_adapter.service, CONFIG_GPIOC_IFACEID, OSM_GPIOC_GPIO_A_2, NULL);
+    SRTM_IoService_RegisterPin(srtm_io_adapter.service, CONFIG_GPIOC_IFACEID, OSM_GPIOC_GPIO_A_3, NULL);
+    SRTM_IoService_RegisterPin(srtm_io_adapter.service, CONFIG_GPIOC_IFACEID, OSM_GPIOC_GPIO_A_4, NULL);
+    SRTM_IoService_RegisterPin(srtm_io_adapter.service, CONFIG_GPIOC_IFACEID, OSM_GPIOC_GPIO_A_5, NULL);
+    SRTM_IoService_RegisterPin(srtm_io_adapter.service, CONFIG_GPIOC_IFACEID, OSM_GPIOC_GPIO_B_0, NULL);
+    
+    /* Register IRQHandler */
+    IO_RegisterIRQCallback(io_adapter, CONFIG_GPIOA_IFACEID, &APP_SRTM_IO_ISR);
+    IO_RegisterIRQCallback(io_adapter, CONFIG_GPIOB_IFACEID, &APP_SRTM_IO_ISR);
+    IO_RegisterIRQCallback(io_adapter, CONFIG_GPIOC_IFACEID, &APP_SRTM_IO_ISR);
+}
+#endif /* CONFIG_BOARD_OSMSFMX8ULP */
+
 static void APP_SRTM_InitIOService(struct board_descr *bdescr)
 {
     enum board_types btype = bdescr->btype;
@@ -902,42 +991,18 @@ static void APP_SRTM_InitIOService(struct board_descr *bdescr)
     switch(btype){
 #ifdef CONFIG_BOARD_PICOCOREMX8ULP
         case BT_PICOCOREMX8ULP:
-            SRTM_IoService_RegisterPin(srtm_io_adapter.service, CONFIG_GPIOA_IFACEID, PCORE_GPIOA_GPIO_J1_44, NULL);
-            SRTM_IoService_RegisterPin(srtm_io_adapter.service, CONFIG_GPIOA_IFACEID, PCORE_GPIOA_GPIO_J1_46, NULL);
-            SRTM_IoService_RegisterPin(srtm_io_adapter.service, CONFIG_GPIOA_IFACEID, PCORE_GPIOA_I2C_IRQ_B, NULL);
-            SRTM_IoService_RegisterPin(srtm_io_adapter.service, CONFIG_GPIOA_IFACEID, PCORE_GPIOA_I2C_RTC_IRQ, NULL);
-            SRTM_IoService_RegisterPin(srtm_io_adapter.service, CONFIG_GPIOB_IFACEID, PCORE_GPIOB_BT_IRQ, NULL);
-            SRTM_IoService_RegisterPin(srtm_io_adapter.service, CONFIG_GPIOB_IFACEID, PCORE_GPIOB_WLAN_HOST_WAKE, NULL);
-            SRTM_IoService_RegisterPin(srtm_io_adapter.service, CONFIG_GPIOB_IFACEID, PCORE_GPIOB_WLAN_WAKE_HOST, NULL);
-            SRTM_IoService_RegisterPin(srtm_io_adapter.service, CONFIG_GPIOC_IFACEID, PCORE_GPIOC_GPIO_J2_100, NULL);
-            SRTM_IoService_RegisterPin(srtm_io_adapter.service, CONFIG_GPIOC_IFACEID, PCORE_GPIOC_GPIO_J2_84, NULL);
-            SRTM_IoService_RegisterPin(srtm_io_adapter.service, CONFIG_GPIOC_IFACEID, PCORE_GPIOC_GPIO_J2_86, NULL);
-            SRTM_IoService_RegisterPin(srtm_io_adapter.service, CONFIG_GPIOC_IFACEID, PCORE_GPIOC_GPIO_J2_88, NULL);
-            SRTM_IoService_RegisterPin(srtm_io_adapter.service, CONFIG_GPIOC_IFACEID, PCORE_GPIOC_GPIO_J2_90, NULL);
-            SRTM_IoService_RegisterPin(srtm_io_adapter.service, CONFIG_GPIOC_IFACEID, PCORE_GPIOC_GPIO_J2_92, NULL);
-            SRTM_IoService_RegisterPin(srtm_io_adapter.service, CONFIG_GPIOC_IFACEID, PCORE_GPIOC_GPIO_J2_98, NULL);
+            APP_SRTM_PCore_InitIOService(bdescr);
             break;
 #endif /* CONFIG_BOARD_PICOCOREMX8ULP */
 #ifdef CONFIG_BOARD_OSMSFMX8ULP
         case BT_OSMSFMX8ULP:
-            SRTM_IoService_RegisterPin(srtm_io_adapter.service, CONFIG_GPIOA_IFACEID, OSM_GPIOA_GPIO_B_3, NULL);
-            SRTM_IoService_RegisterPin(srtm_io_adapter.service, CONFIG_GPIOA_IFACEID, OSM_GPIOA_GPIO_B_4, NULL);
-            SRTM_IoService_RegisterPin(srtm_io_adapter.service, CONFIG_GPIOB_IFACEID, OSM_GPIOB_CARRIER_PWR_EN, NULL);
-            SRTM_IoService_RegisterPin(srtm_io_adapter.service, CONFIG_GPIOB_IFACEID, OSM_GPIOB_GPIO_B_1, NULL);
-            SRTM_IoService_RegisterPin(srtm_io_adapter.service, CONFIG_GPIOB_IFACEID, OSM_GPIOB_GPIO_B_2, NULL);
-            SRTM_IoService_RegisterPin(srtm_io_adapter.service, CONFIG_GPIOB_IFACEID, OSM_GPIOB_CAM_EN, NULL);
-            SRTM_IoService_RegisterPin(srtm_io_adapter.service, CONFIG_GPIOB_IFACEID, OSM_GPIOB_CAM_RST, NULL);
-            SRTM_IoService_RegisterPin(srtm_io_adapter.service, CONFIG_GPIOC_IFACEID, OSM_GPIOC_GPIO_A_0, NULL);
-            SRTM_IoService_RegisterPin(srtm_io_adapter.service, CONFIG_GPIOC_IFACEID, OSM_GPIOC_GPIO_A_1, NULL);
-            SRTM_IoService_RegisterPin(srtm_io_adapter.service, CONFIG_GPIOC_IFACEID, OSM_GPIOC_GPIO_A_2, NULL);
-            SRTM_IoService_RegisterPin(srtm_io_adapter.service, CONFIG_GPIOC_IFACEID, OSM_GPIOC_GPIO_A_3, NULL);
-            SRTM_IoService_RegisterPin(srtm_io_adapter.service, CONFIG_GPIOC_IFACEID, OSM_GPIOC_GPIO_A_4, NULL);
-            SRTM_IoService_RegisterPin(srtm_io_adapter.service, CONFIG_GPIOC_IFACEID, OSM_GPIOC_GPIO_A_5, NULL);
-            SRTM_IoService_RegisterPin(srtm_io_adapter.service, CONFIG_GPIOC_IFACEID, OSM_GPIOC_GPIO_B_0, NULL);
+            APP_SRTM_OSM_InitIOSevice(bdescr);
             break;
 #endif /* CONFIG_BOARD_OSMSFMX8ULP */
 #ifdef CONFIG_BOARD_ARMSTONEMX8ULP
         case BT_ARMSTONEMX8ULP:
+            // TODO:
+            // APP_SRTM_armStone_InitIOSevice(bdescr);
             break;
 #endif /* CONFIG_BOARD_ARMSTONEMX8ULP */
 
