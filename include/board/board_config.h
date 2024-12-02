@@ -20,8 +20,10 @@
 #define PCORE_GPIOB_WLAN_HOST_WAKE  0
 #define PCORE_GPIOB_WLAN_WAKE_HOST  1
 #define PCORE_GPIOB_BT_IRQ          2
+#define PCORE_GPIOB_RSTN            12
 #define PCORE_GPIOC_GPIO_J2_84      0
 #define PCORE_GPIOC_GPIO_J2_86      1
+#define PCORE_GPIOC_AUDIO_B_I2S_RXFS 3
 #define PCORE_GPIOC_GPIO_J2_88      5
 #define PCORE_GPIOC_GPIO_J2_90      6
 #define PCORE_GPIOC_GPIO_J2_92      11

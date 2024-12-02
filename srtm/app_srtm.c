@@ -930,8 +930,11 @@ static void APP_SRTM_PCore_InitIOService(struct board_descr *bdescr)
     SRTM_IoService_RegisterPin(srtm_io_adapter.service, CONFIG_GPIOB_IFACEID, PCORE_GPIOB_BT_IRQ, NULL);
     SRTM_IoService_RegisterPin(srtm_io_adapter.service, CONFIG_GPIOB_IFACEID, PCORE_GPIOB_WLAN_HOST_WAKE, NULL);
     SRTM_IoService_RegisterPin(srtm_io_adapter.service, CONFIG_GPIOB_IFACEID, PCORE_GPIOB_WLAN_WAKE_HOST, NULL);
+    SRTM_IoService_RegisterPin(srtm_io_adapter.service, CONFIG_GPIOB_IFACEID, PCORE_GPIOB_WLAN_WAKE_HOST, NULL);
+    SRTM_IoService_RegisterPin(srtm_io_adapter.service, CONFIG_GPIOB_IFACEID, PCORE_GPIOB_RSTN, NULL);
     SRTM_IoService_RegisterPin(srtm_io_adapter.service, CONFIG_GPIOC_IFACEID, PCORE_GPIOC_GPIO_J2_100, NULL);
     SRTM_IoService_RegisterPin(srtm_io_adapter.service, CONFIG_GPIOC_IFACEID, PCORE_GPIOC_GPIO_J2_84, NULL);
+    SRTM_IoService_RegisterPin(srtm_io_adapter.service, CONFIG_GPIOC_IFACEID, PCORE_GPIOC_AUDIO_B_I2S_RXFS, NULL);
     SRTM_IoService_RegisterPin(srtm_io_adapter.service, CONFIG_GPIOC_IFACEID, PCORE_GPIOC_GPIO_J2_86, NULL);
     SRTM_IoService_RegisterPin(srtm_io_adapter.service, CONFIG_GPIOC_IFACEID, PCORE_GPIOC_GPIO_J2_88, NULL);
     SRTM_IoService_RegisterPin(srtm_io_adapter.service, CONFIG_GPIOC_IFACEID, PCORE_GPIOC_GPIO_J2_90, NULL);
