@@ -22,6 +22,7 @@
 #include <srtm/srtm_i2c_service.h>
 #include <srtm/srtm_io_service.h>
 #include <srtm/srtm_lfcl_service.h>
+#include <srtm/srtm_pwm_service.h>
 #include <srtm/app_srtm.h>
 #include <board/board.h>
 #include <board/board_i2c.h>
@@ -68,6 +69,7 @@ static bool support_dsl_for_apd = false; /* true: support deep sleep mode; false
 static srtm_dispatcher_t disp;
 static srtm_peercore_t core;
 static struct srtm_i2c_adapter srtm_i2c_adapter;
+static struct srtm_pwm_adapter srtm_pwm_adapter;
 static struct srtm_io_adapter srtm_io_adapter;
 static SemaphoreHandle_t monSig;
 static struct rpmsg_lite_instance *rpmsgHandle;
@@ -521,6 +523,11 @@ static void APP_SRTM_Linkup(void)
 
     /* Create and add SRTM Life Cycle channel to peer core */
     rpmsgConfig.epName = APP_SRTM_LFCL_CHANNEL_NAME;
+    chan               = SRTM_RPMsgEndpoint_Create(&rpmsgConfig);
+    SRTM_PeerCore_AddChannel(core, chan);
+
+    /* Create and add SRTM PWM channel to peer core */
+    rpmsgConfig.epName = APP_SRTM_PWM_CHANNEL_NAME;
     chan               = SRTM_RPMsgEndpoint_Create(&rpmsgConfig);
     SRTM_PeerCore_AddChannel(core, chan);
 
@@ -1216,11 +1223,21 @@ static void APP_SRTM_InitLfclService(struct board_descr *bdescr)
     SRTM_Dispatcher_RegisterService(disp, service);
 }
 
+static void APP_SRTM_InitPwmService(struct board_descr *bdescr)
+{
+    PRINTF("APP_SRTM: Start %s\r\n", __func__);
+    /* Create and register PWM service */
+    srtm_pwm_adapter.pwm_adapter = &bdescr->pwm_adapter;
+    SRTM_PwmService_Create(&srtm_pwm_adapter);
+    SRTM_Dispatcher_RegisterService(disp, srtm_pwm_adapter.service);
+}
+
 static void APP_SRTM_InitServices(struct board_descr *bdescr)
 {
     APP_SRTM_InitI2CService(bdescr);
     APP_SRTM_InitIOService(bdescr);
     APP_SRTM_InitLfclService(bdescr);
+    APP_SRTM_InitPwmService(bdescr);
 }
 
 void APP_PowerOffCA35(void)

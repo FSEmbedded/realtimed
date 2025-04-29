@@ -48,6 +48,8 @@ include(${ProjDirPath}/flags.cmake)
 include(${ProjDirPath}/config.cmake)
 
 add_executable(${MCUX_SDK_PROJECT_NAME} 
+"${ProjDirPath}/../board/board_pwm.c"
+"${ProjDirPath}/../srtm/services/srtm_pwm_service.c"
 "${ProjDirPath}/../FreeRTOSConfig.h"
 "${ProjDirPath}/../rpmsg_config.h"
 "${ProjDirPath}/../realtimed.c"

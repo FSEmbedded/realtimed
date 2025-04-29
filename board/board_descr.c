@@ -330,7 +330,11 @@ int BOARD_InitBoardDescr(enum board_types btype)
     ret = init_i2c_adapter(&bdescr->i2c_adapter, i2c_devs, btype);
     if(ret)
         return ret;
-    
+
+    ret = init_pwm_adapter(&bdescr->pwm_adapter, tpm_devs, btype);
+    if(ret)
+        return ret;
+
     ret = init_io_adapter(&bdescr->io_adapter, io_devs, btype);
     if(ret)
         return ret;
