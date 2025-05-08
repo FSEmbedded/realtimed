@@ -195,7 +195,7 @@ int BOARD_InitBoardDescr(enum board_types btype)
         {
             .base_addr  = SAI0_BASE,
             .ip_name    = kCLOCK_Sai0,
-            .ip_src     = kCLOCK_Pcc1BusIpSrcCm33Bus, 
+            .ip_src     = kCLOCK_Cm33SaiClkSrcPll1Pfd2Div,
             .instance   = 0,
             .irq        = SAI0_IRQn,
             .irqHandler = NULL,
@@ -204,7 +204,7 @@ int BOARD_InitBoardDescr(enum board_types btype)
         {
             .base_addr  = SAI1_BASE,
             .ip_name    = kCLOCK_Sai1,
-            .ip_src     = kCLOCK_Pcc1BusIpSrcCm33Bus, 
+            .ip_src     = kCLOCK_Cm33SaiClkSrcPll1Pfd2Div,
             .instance   = 1,
             .irq        = SAI1_IRQn,
             .irqHandler = NULL,
@@ -213,7 +213,7 @@ int BOARD_InitBoardDescr(enum board_types btype)
         {
             .base_addr  = SAI2_BASE,
             .ip_name    = kCLOCK_Sai2,
-            .ip_src     = kCLOCK_Pcc1BusIpSrcCm33Bus, 
+            .ip_src     = kCLOCK_FusionSaiClkSrcPll1Pfd2Div,
             .instance   = 2,
             .irq        = SAI2_IRQn,
             .irqHandler = NULL,
@@ -222,7 +222,7 @@ int BOARD_InitBoardDescr(enum board_types btype)
         {
             .base_addr  = SAI3_BASE,
             .ip_name    = kCLOCK_Sai3,
-            .ip_src     = kCLOCK_Pcc1BusIpSrcCm33Bus, 
+            .ip_src     = kCLOCK_FusionSaiClkSrcPll1Pfd2Div,
             .instance   = 3,
             .irq        = SAI3_IRQn,
             .irqHandler = NULL,
@@ -338,7 +338,11 @@ int BOARD_InitBoardDescr(enum board_types btype)
     ret = init_io_adapter(&bdescr->io_adapter, io_devs, btype);
     if(ret)
         return ret;
-    
+
+    ret = init_sai_edma_adapter(&bdescr->sai_adapter, sai_devs, btype);
+    if(ret)
+        return ret;
+
     gd_board_descr = bdescr;
     return 0;
 }

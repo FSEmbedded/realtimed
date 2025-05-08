@@ -17,6 +17,7 @@ struct board_descr {
     struct i2c_adapter i2c_adapter;
     struct io_adapter io_adapter;
     struct pwm_adapter pwm_adapter;
+    struct sai_adapter sai_adapter;
 };
 
 /**

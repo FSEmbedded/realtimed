@@ -33,6 +33,9 @@
 #include "rsc_table.h"
 #include "fsl_bbnsm.h"
 #include "fsl_sentinel.h"
+#include <srtm/srtm_audio_service.h>
+#include <srtm/srtm_sai_edma_adapter.h>
+#include <board/board_sai.h>
 
 void APP_SRTM_WakeupCA35(void);
 
@@ -51,6 +54,23 @@ bool wake_acore_flag             = true;
 pca9460_buck3ctrl_t buck3_ctrl;
 pca9460_ldo1_cfg_t ldo1_cfg;
 
+#if SRTM_SAI_EDMA_LOCAL_BUF_ENABLE
+#define BUFFER_LEN (128 * 1024)
+#if (defined(__ICCARM__))
+static uint8_t g_buffer[BUFFER_LEN] @"AudioBuf";
+#else
+static uint8_t g_buffer[BUFFER_LEN] __attribute__((section("AudioBuf,\"w\",%nobits @")));
+#endif
+static srtm_sai_edma_local_buf_t g_local_buf = {
+    .buf       = (uint8_t *)&g_buffer,
+    .bufSize   = BUFFER_LEN,
+    .periods   = SRTM_SAI_EDMA_MAX_LOCAL_BUF_PERIODS,
+    .threshold = 1,
+
+};
+#endif
+
+
 /* For CMC1_IRQHandler */
 static int64_t apd_boot_cnt = 0; /* it's cold boot when apd_boot_cnt(Application Domain, A Core) == 1 */
 
@@ -65,6 +85,9 @@ static int64_t apd_boot_cnt = 0; /* it's cold boot when apd_boot_cnt(Application
  */
 
 static bool support_dsl_for_apd = false; /* true: support deep sleep mode; false: not support deep sleep mode */
+
+static srtm_sai_adapter_t saiAdapter;
+static srtm_service_t audioService;
 
 static srtm_dispatcher_t disp;
 static srtm_peercore_t core;
@@ -516,6 +539,13 @@ static void APP_SRTM_Linkup(void)
     chan               = SRTM_RPMsgEndpoint_Create(&rpmsgConfig);
     SRTM_PeerCore_AddChannel(core, chan);
 
+    /* Create and add SRTM AUDIO channel to peer core*/
+    rpmsgConfig.epName = APP_SRTM_AUDIO_CHANNEL_NAME;
+    chan               = SRTM_RPMsgEndpoint_Create(&rpmsgConfig);
+    SRTM_PeerCore_AddChannel(core, chan);
+    assert((audioService != NULL) && (saiAdapter != NULL));
+    SRTM_AudioService_BindChannel(audioService, saiAdapter, chan);
+
     /* Create and add SRTM IO channel to peer core */
     rpmsgConfig.epName = APP_SRTM_IO_CHANNEL_NAME;
     chan               = SRTM_RPMsgEndpoint_Create(&rpmsgConfig);
@@ -587,6 +617,9 @@ static void APP_SRTM_GpioReset(void)
 
 static void APP_SRTM_ResetServices(void)
 {
+    /* When CA35 resets, we need to avoid async event to send to CA35. Audio and IO services have async events. */
+    SRTM_AudioService_Reset(audioService, core);
+
     /* When CA35 resets, we need to avoid async event to send to CA35. Audio and IO services have async events. */
     APP_SRTM_GpioReset();
 }
@@ -851,6 +884,81 @@ void APP_SRTM_PostCopyCallback()
     }
 }
 #endif
+
+
+static void APP_SRTM_InitAudioDevice(struct board_descr *bdescr)
+{
+    edma_config_t dmaConfig;
+    struct sai_chip *sai_chip = (struct sai_chip *)bdescr->sai_adapter.sai_chip;
+
+    /* Initialize DMA0 for SAI */
+    EDMA_GetDefaultConfig(&dmaConfig);
+    EDMA_Init(DMA0, &dmaConfig);
+
+    /* Initialize DMAMUX for SAI */
+    EDMA_SetChannelMux(DMA0, APP_SAI_TX_DMA_CHANNEL, sai_chip->edma_mux1);
+    EDMA_SetChannelMux(DMA0, APP_SAI_RX_DMA_CHANNEL, sai_chip->edma_mux2);
+}
+
+
+static void APP_SRTM_InitAudioService(struct board_descr *bdescr)
+{
+    srtm_sai_edma_config_t saiTxConfig;
+    srtm_sai_edma_config_t saiRxConfig;
+    struct sai_chip *sai_chip = (struct sai_chip *)bdescr->sai_adapter.sai_chip;
+
+    APP_SRTM_InitAudioDevice(bdescr);
+
+    memset(&saiTxConfig, 0, sizeof(saiTxConfig));
+    memset(&saiRxConfig, 0, sizeof(saiRxConfig));
+
+    /*  Set SAI DMA IRQ Priority. */
+    NVIC_SetPriority(APP_DMA_IRQN(APP_SAI_TX_DMA_CHANNEL), APP_SAI_TX_DMA_IRQ_PRIO);
+    NVIC_SetPriority(APP_DMA_IRQN(APP_SAI_RX_DMA_CHANNEL), APP_SAI_RX_DMA_IRQ_PRIO);
+    NVIC_SetPriority(APP_SRTM_SAI_IRQn, APP_SAI_IRQ_PRIO);
+    NVIC_SetPriority(APP_DMA_IRQN(APP_PDM_RX_DMA_CHANNEL), APP_PDM_RX_DMA_IRQ_PRIO);
+    NVIC_SetPriority(APP_SRTM_PDM_IRQn, APP_PDM_IRQ_PRIO);
+
+    SAI_GetClassicI2SConfig(&saiTxConfig.config, kSAI_WordWidth16bits, kSAI_Stereo, kSAI_Channel0Mask);
+    saiTxConfig.config.syncMode           = kSAI_ModeSync; /* Tx in Sync mode */
+    saiTxConfig.config.fifo.fifoWatermark = FSL_FEATURE_SAI_FIFO_COUNTn(APP_SRTM_SAI) - 1;
+     // Initialize ip_name with the appropriate value
+    saiTxConfig.mclk                      = CLOCK_GetIpFreq(sai_chip->dev.ip_name); /* MCLK frequency */
+#if SRTM_SAI_EDMA_LOCAL_BUF_ENABLE
+    saiTxConfig.stopOnSuspend = false; /* Keep playing audio on APD suspend. */
+#else
+    saiTxConfig.stopOnSuspend = true;
+#endif
+    saiTxConfig.threshold = 1U; /* Every period transmitted triggers periodDone message to A core. */
+    saiTxConfig.guardTime =
+        1000; /* Unit:ms. This is a lower limit that M core should reserve such time data to wakeup A core. */
+    saiTxConfig.dmaChannel = APP_SAI_TX_DMA_CHANNEL;
+
+    SAI_GetClassicI2SConfig(&saiRxConfig.config, kSAI_WordWidth16bits, kSAI_Stereo, kSAI_Channel0Mask);
+    saiRxConfig.config.syncMode           = kSAI_ModeAsync; /* Rx in async mode */
+    saiRxConfig.config.fifo.fifoWatermark = 1;
+    saiRxConfig.mclk                      = saiTxConfig.mclk;
+#if SRTM_SAI_EDMA_LOCAL_BUF_ENABLE
+    saiRxConfig.stopOnSuspend = false; /* Keep recording data on APD suspend. */
+#else
+    saiRxConfig.stopOnSuspend = true;
+#endif
+    saiRxConfig.threshold  = UINT32_MAX; /* Every period received triggers periodDone message to A core. */
+    saiRxConfig.dmaChannel = APP_SAI_RX_DMA_CHANNEL;
+
+    saiAdapter = SRTM_SaiEdmaAdapter_Create((I2S_Type *)sai_chip->dev.base_addr, DMA0, &saiTxConfig, &saiRxConfig);
+
+#if SRTM_SAI_EDMA_LOCAL_BUF_ENABLE
+    SRTM_SaiEdmaAdapter_SetTxLocalBuf(saiAdapter, &g_local_buf);
+    SRTM_SaiEdmaAdapter_SetTxPreCopyCallback(saiAdapter, APP_SRTM_PreCopyCallback);
+    SRTM_SaiEdmaAdapter_SetTxPostCopyCallback(saiAdapter, APP_SRTM_PostCopyCallback);
+#endif
+
+    /* Create and register audio service */
+    audioService = SRTM_AudioService_Create(saiAdapter, NULL);
+    SRTM_Dispatcher_RegisterService(disp, audioService);
+}
+
 
 static void APP_SRTM_InitI2CDevice(struct board_descr *bdescr)
 {
@@ -1238,6 +1346,7 @@ static void APP_SRTM_InitServices(struct board_descr *bdescr)
     APP_SRTM_InitIOService(bdescr);
     APP_SRTM_InitLfclService(bdescr);
     APP_SRTM_InitPwmService(bdescr);
+    APP_SRTM_InitAudioService(bdescr);
 }
 
 void APP_PowerOffCA35(void)
@@ -1502,7 +1611,8 @@ void APP_SRTM_Suspend(void)
 void APP_SRTM_Resume(bool resume)
 {
     struct board_descr *bdescr = get_board_description();
-    
+
+    APP_SRTM_InitAudioDevice(bdescr);
     APP_SRTM_InitI2CDevice(bdescr);
 }
 

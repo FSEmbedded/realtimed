@@ -63,6 +63,7 @@ add_executable(${MCUX_SDK_PROJECT_NAME}
 "${ProjDirPath}/../board/board_uart.c"
 "${ProjDirPath}/../board/board_i2c.c"
 "${ProjDirPath}/../board/board_io.c"
+"${ProjDirPath}/../board/board_sai.c"
 "${ProjDirPath}/../board/board_descr.c"
 "${ProjDirPath}/../board/pinmux.c"
 "${ProjDirPath}/../lib/libfdt/fdt.c"
@@ -80,6 +81,8 @@ add_executable(${MCUX_SDK_PROJECT_NAME}
 "${ProjDirPath}/../srtm/services/srtm_lfcl_service.c"
 "${ProjDirPath}/../srtm/services/srtm_i2c_service.c"
 "${ProjDirPath}/../srtm/services/srtm_io_service.c"
+"${ProjDirPath}/../srtm/services/srtm_audio_service.c"
+"${ProjDirPath}/../srtm/services/srtm_sai_edma_adapter.c"
 )
 
 target_include_directories(${MCUX_SDK_PROJECT_NAME} PRIVATE
