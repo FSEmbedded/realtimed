@@ -10,16 +10,17 @@
 #include "fsl_debug_console.h"
 #include "fsl_lpuart.h"
 
+
+//struct uart_adapter *g_uart_adapter = NULL;
+
+#define BOARD_UART_BUFFER_SIZE 32
+
 /* Description of an UART instance */
 struct uart_iface {
     struct dev dev;
     uint8_t id;                     // user defined Iface ID
-    uint32_t baudrate;
+    lpuart_config_t config;         // UART configuration
     struct _lpuart_handle handle;   // driver Handle
-    volatile bool rxBufferEmpty;
-    volatile bool txBufferFull;
-    volatile bool txOnGoing;
-    volatile bool rxOnGoing;
 };
 
 struct uart_adapter;
@@ -27,20 +28,27 @@ struct uart_adapter;
 struct uart_ops {
     /**
      * @brief init uart, setup clocks and driver instance
-     * 
+     *
      * @param uart_adapter: uart adapter description
      * @param uart_iface: a specific uart iface instance
      */
     void (*init)(struct uart_adapter *uart_adapter, struct uart_iface *uart_iface);
-    
+
+    /**
+     * @brief deinit uart, free resources
+     * @param uart_adapter: uart adapter description
+     * @param uart_iface: a specific uart iface instance
+     */
+    void (*deinit)(struct uart_adapter *uart_adapter, struct uart_iface *uart_iface);
+
     /**
      * @brief read data with size len from uart instance
-     * 
+     *
      * @param uart_adapter: uart adapter description
      * @param uart_iface: a specific uart iface instance
      * @param buf: ptr to buffer
      * @param len: ptr to lenght, lenght will be overridden, after data is read
-     * 
+     *
      * @return status_t values
      */
     status_t (*read)(struct uart_adapter *uart_adapter,
@@ -56,6 +64,22 @@ struct uart_ops {
     status_t (*write)(struct uart_adapter *uart_adaper,
                         struct uart_iface *uart_iface,
                         uint8_t *buf, size_t len);
+
+    /**
+     * @brief get iface from index
+     * @param uart_adapter: uart adapter description
+     * @param ifaceId: iface index
+     * @return pointer to uart_iface or NULL if not found
+     */
+    struct uart_iface *(*get_iface_from_idx)(struct uart_adapter *uart_adapter, uint8_t ifaceId);
+
+    /**
+     * @brief check if transfer is complete
+     * @param uart_adapter: uart adapter description
+     * @param uart_iface: a specific uart iface instance
+     * @return true if transfer is complete, false otherwise
+     */
+    int (*is_transfer_complete)(struct uart_adapter *uart_adapter, struct uart_iface *uart_iface);
 };
 
 struct uart_adapter {
@@ -71,7 +95,7 @@ struct dbg_info {
 
 /**
  * @brief initialise dbg info structure
- * 
+ *
  * @param dbg_info: dbg info to initialise
  * @param uart_devs: array of UART Instances
  * @param btype: board type
@@ -81,7 +105,7 @@ int init_dbg_info(struct dbg_info *dbg_info, struct dev *uart_devs, enum board_t
 
 /**
  * @brief initialise uart adapter structure
- * 
+ *
  * @param uart_adapter: adapter to initialise
  * @param uart_devs: array of UART Instances
  * @param btype: board type
@@ -91,7 +115,7 @@ int init_uart_adapter(struct uart_adapter *uart_adapter, struct dev *uart_devs, 
 
 /**
  * @brief Set and initialise Debug Interface.
- *  
+ *
  * @param dbg_info: struct, that holds debug information
  */
 void BOARD_InitDebugConsole(struct dbg_info *dbg_info);

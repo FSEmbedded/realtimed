@@ -9,6 +9,28 @@
 #include "fsl_reset.h"
 #include "fsl_common.h"
 
+enum
+{
+    kLPUART_TxIdle, /*!< TX idle. */
+    kLPUART_TxBusy, /*!< TX busy. */
+    kLPUART_RxIdle, /*!< RX idle. */
+    kLPUART_RxBusy  /*!< RX busy. */
+};
+
+static struct uart_iface *get_iface_from_idx(struct uart_adapter *uart_adapter, uint8_t ifaceId)
+{
+    struct uart_iface *uart_iface = uart_adapter->uart_iface;
+    uint8_t num_iface = uart_adapter->num_iface;
+    uint8_t i;
+
+    for(i = 0; i < num_iface; i++){
+        if(uart_iface[i].id == ifaceId)
+            return &uart_iface[i];
+    }
+
+    return  NULL;
+}
+
 static void __init_uart(struct uart_iface *uart_iface)
 {
     struct dev *dev = &uart_iface->dev;
@@ -31,48 +53,29 @@ void BOARD_InitDebugConsole(struct dbg_info *dbg_info)
 
     RESET_PeripheralReset(dev->reset);
     DbgConsole_Init(dev->instance,
-        uart_iface->baudrate,
+        uart_iface->config.baudRate_Bps,
         dbg_info->port_type,
         uartClkSrcFreq);
-}
-
-/* LPUART user callback */
-static void LPUART_Callback(LPUART_Type *base, lpuart_handle_t *handle, status_t status, void *userData)
-{
-    struct uart_iface *uart_iface = userData;
-
-    if (status == kStatus_LPUART_TxIdle)
-    {
-        uart_iface->txBufferFull = false;
-        uart_iface->txOnGoing    = false;
-    }
-
-    if (status == kStatus_LPUART_RxIdle)
-    {
-        uart_iface->rxBufferEmpty = false;
-        uart_iface->rxOnGoing     = false;
-    }
 }
 
 static void BOARD_LPUART_Init(struct uart_adapter *uart_adapter, struct uart_iface *uart_iface)
 {
     struct dev *dev = &uart_iface->dev;
-    lpuart_config_t config;
+    lpuart_config_t *config = &uart_iface->config;
 
     __init_uart(uart_iface);
+    config->enableTx     = true;
+    config->enableRx     = true;
 
-    LPUART_GetDefaultConfig(&config);
-    config.baudRate_Bps = uart_iface->baudrate;
-    config.enableTx     = true;
-    config.enableRx     = true;
+    LPUART_Init((LPUART_Type *)dev->base_addr, config, CLOCK_GetIpFreq(dev->ip_name));
+    LPUART_TransferCreateHandle((LPUART_Type *)dev->base_addr, &uart_iface->handle, NULL, uart_iface);
+}
 
-    uart_iface->rxBufferEmpty = true;
-    uart_iface->txBufferFull  = false;
-    uart_iface->txOnGoing     = false;
-    uart_iface->rxOnGoing     = false;
+static void BOARD_LPUART_Deinit(struct uart_adapter *uart_adapter, struct uart_iface *uart_iface)
+{
+    struct dev *dev = &uart_iface->dev;
 
-    LPUART_Init((LPUART_Type *)dev->base_addr, &config, CLOCK_GetIpFreq(dev->ip_name));
-    LPUART_TransferCreateHandle((LPUART_Type *)dev->base_addr, &uart_iface->handle, LPUART_Callback, uart_iface);
+    LPUART_Deinit((LPUART_Type *)dev->base_addr);
 }
 
 static status_t BOARD_LPUART_Write(struct uart_adapter *uart_adaper,
@@ -82,9 +85,8 @@ static status_t BOARD_LPUART_Write(struct uart_adapter *uart_adaper,
     struct dev *dev = &uart_iface->dev;
     lpuart_transfer_t xfer;
 
-    xfer.data       = buf;
-    xfer.dataSize   = len;
-    uart_iface->txOnGoing = true;
+    xfer.data               = buf;
+    xfer.dataSize           = len;
 
     return LPUART_TransferSendNonBlocking((LPUART_Type *)dev->base_addr, &uart_iface->handle, &xfer);
 }
@@ -95,11 +97,8 @@ static status_t BOARD_LPUART_Read(struct uart_adapter *uart_adapter,
 {
     struct dev *dev = &uart_iface->dev;
     lpuart_transfer_t xfer;
-    
-    xfer.data       = buf;
-    xfer.dataSize   = *len;
-    uart_iface->rxOnGoing = true;
-
+    xfer.data               = buf;
+    xfer.dataSize           = *len;
     return LPUART_TransferReceiveNonBlocking((LPUART_Type *)dev->base_addr, &uart_iface->handle, &xfer, len);
 }
 
@@ -107,9 +106,16 @@ static int __init_uart_iface(struct uart_iface *uart_iface, struct dev *uart_dev
 {
     memcpy(&uart_iface->dev, uart_dev, sizeof(struct dev));
     uart_iface->id  = id;
-    uart_iface->baudrate = BOARD_DEBUG_UART_BAUDRATE;
-    
+
+    LPUART_GetDefaultConfig(&uart_iface->config);
+    uart_iface->config.baudRate_Bps = BOARD_DEBUG_UART_BAUDRATE;
+
     return 0;
+}
+
+static int is_transfer_complete(struct uart_adapter *uart_adapter, struct uart_iface *uart_iface)
+{
+    return (uart_iface->handle.txState != kLPUART_TxBusy);
 }
 
 int init_uart_adapter(struct uart_adapter *uart_adapter, struct dev *uart_devs, enum board_types btype)
@@ -124,7 +130,7 @@ int init_uart_adapter(struct uart_adapter *uart_adapter, struct dev *uart_devs, 
             if(!iuart)
                 return -ENOMEM;
 
-            ret = __init_uart_iface(&iuart[0], &uart_devs[1], 1);
+            ret = __init_uart_iface(&iuart[0], &uart_devs[1], 2);
             if(ret){
                 vPortFree(iuart);
                 return ret;
@@ -140,7 +146,7 @@ int init_uart_adapter(struct uart_adapter *uart_adapter, struct dev *uart_devs, 
             if(!iuart)
                 return -ENOMEM;
 
-            ret = __init_uart_iface(&iuart[0], &uart_devs[1], 1);
+            ret = __init_uart_iface(&iuart[0], &uart_devs[1], 3);
             if(ret){
                 vPortFree(iuart);
                 return ret;
@@ -176,9 +182,12 @@ int init_uart_adapter(struct uart_adapter *uart_adapter, struct dev *uart_devs, 
             return -EINVAL;
     }
 
+    uart_adapter->ops.get_iface_from_idx = &get_iface_from_idx;
     uart_adapter->ops.init = &BOARD_LPUART_Init;
+    uart_adapter->ops.deinit = &BOARD_LPUART_Deinit;
     uart_adapter->ops.read = &BOARD_LPUART_Read;
     uart_adapter->ops.write = &BOARD_LPUART_Write;
+    uart_adapter->ops.is_transfer_complete = &is_transfer_complete;
 
     return 0;
 }
