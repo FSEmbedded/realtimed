@@ -7,7 +7,7 @@ SET (MCUXPRESSO_CMAKE_FORMAT_MAJOR_VERSION 2)
 SET (MCUXPRESSO_CMAKE_FORMAT_MINOR_VERSION 0)
 
 #APP VERSION
-SET(RDAEMON_VERSION "0.2.1")
+SET(RDAEMON_VERSION "0.3.0")
 
 include(ide_overrides.cmake OPTIONAL)
 
@@ -83,6 +83,7 @@ add_executable(${MCUX_SDK_PROJECT_NAME}
 "${ProjDirPath}/../srtm/services/srtm_io_service.c"
 "${ProjDirPath}/../srtm/services/srtm_audio_service.c"
 "${ProjDirPath}/../srtm/services/srtm_sai_edma_adapter.c"
+"${ProjDirPath}/../srtm/services/srtm_uart_service.c"
 )
 
 target_include_directories(${MCUX_SDK_PROJECT_NAME} PRIVATE

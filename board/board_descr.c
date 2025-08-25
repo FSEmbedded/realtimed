@@ -234,7 +234,7 @@ int BOARD_InitBoardDescr(enum board_types btype)
         {
             .base_addr  = LPUART0_BASE,
             .ip_name    = kCLOCK_Lpuart0,
-            .ip_src     = kCLOCK_Pcc1BusIpSrcSysOscDiv2, 
+            .ip_src     = kCLOCK_Pcc1BusIpSrcCm33Bus,
             .instance   = 0,
             .irq        = 0,
             .irqHandler = NULL,
@@ -243,7 +243,7 @@ int BOARD_InitBoardDescr(enum board_types btype)
         {
             .base_addr  = LPUART1_BASE,
             .ip_name    = kCLOCK_Lpuart1,
-            .ip_src     = kCLOCK_Pcc1BusIpSrcSysOscDiv2, 
+            .ip_src     = kCLOCK_Pcc1BusIpSrcCm33Bus,
             .instance   = 1,
             .irq        = 0,
             .irqHandler = NULL,
@@ -252,7 +252,7 @@ int BOARD_InitBoardDescr(enum board_types btype)
         {
             .base_addr  = LPUART2_BASE,
             .ip_name    = kCLOCK_Lpuart2,
-            .ip_src     = kCLOCK_Pcc1BusIpSrcSysOscDiv2, 
+            .ip_src     = kCLOCK_Pcc2BusIpSrcFusionDspBus,
             .instance   = 2,
             .irq        = 0,
             .irqHandler = NULL,
@@ -261,20 +261,11 @@ int BOARD_InitBoardDescr(enum board_types btype)
         {
             .base_addr  = LPUART3_BASE,
             .ip_name    = kCLOCK_Lpuart3,
-            .ip_src     = kCLOCK_Pcc1BusIpSrcSysOscDiv2, 
+            .ip_src     = kCLOCK_Pcc2BusIpSrcFusionDspBus,
             .instance   = 3,
             .irq        = 0,
             .irqHandler = NULL,
             .reset      = kRESET_Lpuart3,
-        },
-        {
-            .base_addr  = LPUART4_BASE,
-            .ip_name    = kCLOCK_Lpuart4,
-            .ip_src     = kCLOCK_Pcc1BusIpSrcSysOscDiv2, 
-            .instance   = 4,
-            .irq        = 0,
-            .irqHandler = NULL,
-            .reset      = kRESET_Lpuart4,
         },
     };
 
@@ -348,7 +339,7 @@ int BOARD_InitBoardDescr(enum board_types btype)
 }
 
 void BOARD_InitPeripherie(struct board_descr *bdescr)
-{    
+{
     struct dbg_info *dbg_info = &bdescr->dbg_info;
 
     CLOCK_EnableClock(kCLOCK_Dma0Ch0);
@@ -371,7 +362,7 @@ void BOARD_carrier_enable(struct board_descr *bdescr)
     switch(btype){
         case BT_OSMSFMX8ULP:
         case BT_ARMSTONEMX8ULP:
-            io_adapter->ops.set_output(io_adapter, CONFIG_GPIOB_IFACEID, GPIOB_CARRIER_PWR_EN, IO_ValueHigh);
+            io_adapter->ops.set_output(io_adapter, CONFIG_GPIOA_IFACEID, GPIOA_CARRIER_PWR_EN, IO_ValueHigh);
             break;
         default:
             break;

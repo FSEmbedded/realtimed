@@ -36,6 +36,7 @@
 #include <srtm/srtm_audio_service.h>
 #include <srtm/srtm_sai_edma_adapter.h>
 #include <board/board_sai.h>
+#include <srtm/srtm_uart_service.h>
 
 void APP_SRTM_WakeupCA35(void);
 
@@ -85,7 +86,7 @@ static int64_t apd_boot_cnt = 0; /* it's cold boot when apd_boot_cnt(Application
  */
 
 static bool support_dsl_for_apd = false; /* true: support deep sleep mode; false: not support deep sleep mode */
-
+static struct _srtm_uart_adapter uartAdapter;
 static srtm_sai_adapter_t saiAdapter;
 static srtm_service_t audioService;
 
@@ -561,6 +562,10 @@ static void APP_SRTM_Linkup(void)
     chan               = SRTM_RPMsgEndpoint_Create(&rpmsgConfig);
     SRTM_PeerCore_AddChannel(core, chan);
 
+    rpmsgConfig.epName = APP_SRTM_UART_CHANNEL_NAME;
+    chan               = SRTM_RPMsgEndpoint_Create(&rpmsgConfig);
+    SRTM_PeerCore_AddChannel(core, chan);
+
     SRTM_Dispatcher_AddPeerCore(disp, core);
 }
 
@@ -920,7 +925,7 @@ static void APP_SRTM_InitAudioService(struct board_descr *bdescr)
     NVIC_SetPriority(APP_SRTM_PDM_IRQn, APP_PDM_IRQ_PRIO);
 
     SAI_GetClassicI2SConfig(&saiTxConfig.config, kSAI_WordWidth16bits, kSAI_Stereo, kSAI_Channel0Mask);
-    saiTxConfig.config.syncMode           = kSAI_ModeSync; /* Tx in Sync mode */
+    saiTxConfig.config.syncMode           = kSAI_ModeAsync;
     saiTxConfig.config.fifo.fifoWatermark = FSL_FEATURE_SAI_FIFO_COUNTn(APP_SRTM_SAI) - 1;
      // Initialize ip_name with the appropriate value
     saiTxConfig.mclk                      = CLOCK_GetIpFreq(sai_chip->dev.ip_name); /* MCLK frequency */
@@ -935,9 +940,9 @@ static void APP_SRTM_InitAudioService(struct board_descr *bdescr)
     saiTxConfig.dmaChannel = APP_SAI_TX_DMA_CHANNEL;
 
     SAI_GetClassicI2SConfig(&saiRxConfig.config, kSAI_WordWidth16bits, kSAI_Stereo, kSAI_Channel0Mask);
-    saiRxConfig.config.syncMode           = kSAI_ModeAsync; /* Rx in async mode */
+    saiRxConfig.config.syncMode           = kSAI_ModeSync;
     saiRxConfig.config.fifo.fifoWatermark = 1;
-    saiRxConfig.mclk                      = saiTxConfig.mclk;
+    saiRxConfig.mclk                      = CLOCK_GetIpFreq(sai_chip->dev.ip_name); /* MCLK frequency */
 #if SRTM_SAI_EDMA_LOCAL_BUF_ENABLE
     saiRxConfig.stopOnSuspend = false; /* Keep recording data on APD suspend. */
 #else
@@ -1070,19 +1075,16 @@ static void APP_SRTM_OSM_InitIOSevice(struct board_descr *bdescr)
     /* Register Pins */
     SRTM_IoService_RegisterPin(srtm_io_adapter.service, CONFIG_GPIOA_IFACEID, OSM_GPIOA_GPIO_B_3, NULL);
     SRTM_IoService_RegisterPin(srtm_io_adapter.service, CONFIG_GPIOA_IFACEID, OSM_GPIOA_GPIO_B_4, NULL);
-    SRTM_IoService_RegisterPin(srtm_io_adapter.service, CONFIG_GPIOB_IFACEID, OSM_GPIOB_CARRIER_PWR_EN, NULL);
+    SRTM_IoService_RegisterPin(srtm_io_adapter.service, CONFIG_GPIOA_IFACEID, OSM_GPIOA_CARRIER_PWR_EN, NULL);
     SRTM_IoService_RegisterPin(srtm_io_adapter.service, CONFIG_GPIOB_IFACEID, OSM_GPIOB_GPIO_B_1, NULL);
     SRTM_IoService_RegisterPin(srtm_io_adapter.service, CONFIG_GPIOB_IFACEID, OSM_GPIOB_GPIO_B_2, NULL);
     SRTM_IoService_RegisterPin(srtm_io_adapter.service, CONFIG_GPIOB_IFACEID, OSM_GPIOB_CAM_EN, NULL);
     SRTM_IoService_RegisterPin(srtm_io_adapter.service, CONFIG_GPIOB_IFACEID, OSM_GPIOB_CAM_RST, NULL);
+    SRTM_IoService_RegisterPin(srtm_io_adapter.service, CONFIG_GPIOB_IFACEID, OSM_GPIOB_PMIC_IRQ, NULL);
     SRTM_IoService_RegisterPin(srtm_io_adapter.service, CONFIG_GPIOC_IFACEID, OSM_GPIOC_GPIO_A_0, NULL);
     SRTM_IoService_RegisterPin(srtm_io_adapter.service, CONFIG_GPIOC_IFACEID, OSM_GPIOC_GPIO_A_1, NULL);
     SRTM_IoService_RegisterPin(srtm_io_adapter.service, CONFIG_GPIOC_IFACEID, OSM_GPIOC_GPIO_A_2, NULL);
-    SRTM_IoService_RegisterPin(srtm_io_adapter.service, CONFIG_GPIOC_IFACEID, OSM_GPIOC_GPIO_A_3, NULL);
-    SRTM_IoService_RegisterPin(srtm_io_adapter.service, CONFIG_GPIOC_IFACEID, OSM_GPIOC_GPIO_A_4, NULL);
-    SRTM_IoService_RegisterPin(srtm_io_adapter.service, CONFIG_GPIOC_IFACEID, OSM_GPIOC_GPIO_A_5, NULL);
-    SRTM_IoService_RegisterPin(srtm_io_adapter.service, CONFIG_GPIOC_IFACEID, OSM_GPIOC_GPIO_B_0, NULL);
-    
+
     /* Register IRQHandler */
     IO_RegisterIRQCallback(io_adapter, CONFIG_GPIOA_IFACEID, &APP_SRTM_IO_ISR);
     IO_RegisterIRQCallback(io_adapter, CONFIG_GPIOB_IFACEID, &APP_SRTM_IO_ISR);
@@ -1340,6 +1342,14 @@ static void APP_SRTM_InitPwmService(struct board_descr *bdescr)
     SRTM_Dispatcher_RegisterService(disp, srtm_pwm_adapter.service);
 }
 
+static void APP_SRTM_InitUartService(struct board_descr *bdescr)
+{
+    uartAdapter.uart_adapter = &bdescr->uart_adapter;
+
+    SRTM_UartService_Create(&uartAdapter);
+    SRTM_Dispatcher_RegisterService(disp, uartAdapter.service);
+}
+
 static void APP_SRTM_InitServices(struct board_descr *bdescr)
 {
     APP_SRTM_InitI2CService(bdescr);
@@ -1347,6 +1357,7 @@ static void APP_SRTM_InitServices(struct board_descr *bdescr)
     APP_SRTM_InitLfclService(bdescr);
     APP_SRTM_InitPwmService(bdescr);
     APP_SRTM_InitAudioService(bdescr);
+    APP_SRTM_InitUartService(bdescr);
 }
 
 void APP_PowerOffCA35(void)
@@ -1411,7 +1422,7 @@ static void SRTM_MonitorTask(void *pvParameters)
                         APP_PowerOnCA35();
                     }
                 }
- 
+
                 /*
                  * NODE: Only Single-BootFlow is supported.
                  * Therefore The U-Boot handshake is done,
@@ -1542,7 +1553,7 @@ void APP_BootCA35(void)
 }
 
 static void SRTM_DispatcherTask(void *pvParameters)
-{    
+{
     PRINTF("APP_SRTM: %s is running\r\n", __func__);
 
     SRTM_Dispatcher_Run(disp);

@@ -94,6 +94,7 @@ typedef enum
 #define APP_SRTM_LFCL_CHANNEL_NAME   "rpmsg-life-cycle-channel"
 #define APP_SRTM_SENSOR_CHANNEL_NAME "rpmsg-sensor-channel"
 #define APP_SRTM_PDM_CHANNEL_NAME    "rpmsg-micfil-channel"
+#define APP_SRTM_UART_CHANNEL_NAME    "rpmsg-tty-channel"
 
 #define PEER_CORE_ID (1U)
 

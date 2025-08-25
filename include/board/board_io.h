@@ -1,3 +1,9 @@
+/*
+ * Copyright (c) 2025 F&S Elektronik Systeme GmbH
+ *
+ * SPDX-License-Identifier: BSD-3-Clause
+ */
+
 #include <board/board_dev.h>
 #include "timers.h"
 
