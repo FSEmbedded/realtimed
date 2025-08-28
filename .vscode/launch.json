@@ -20,7 +20,12 @@
         "set non-stop off"
       ],
     
-      "showDevDebugOutput": "none"
+      "showDevDebugOutput": "none",
+      "gdbServerConfigs": {
+        "linkserver": {},
+        "pemicro": {},
+        "segger": {}
+      }
     }
   ]
 }

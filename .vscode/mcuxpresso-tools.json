@@ -1,20 +1,15 @@
 {
-  "version": "24.9",
-  "toolchainPath": "C:/Users/senatore/.mcuxpressotools/arm-gnu-toolchain-12.3.rel1-mingw-w64-i686-arm-none-eabi",
+  "version": "25.3",
+  "toolchainPath": "/home/claudio/.mcuxpressotools/arm-gnu-toolchain-13.2.Rel1-x86_64-arm-none-eabi",
   "linkedProjects": [],
   "trustZoneType": "none",
   "multicoreType": "none",
-  "debug": {
-    "linkserver": {},
-    "pemicro": {},
-    "segger": {}
-  },
   "projectType": "sdk-freestanding",
   "sdk": {
+    "path": "/home/claudio/Dokumente/MCUXPRESSO/IMX8ULP/2.16.0/__repo__",
+    "version": "2.16.000",
     "boardId": "evkmimx8ulp",
     "deviceId": "MIMX8UD7xxx08",
-    "coreId": "cm33_MIMX8UD7",
-    "version": "",
-    "path": "c:\\Users\\senatore\\Documents\\MX8ULP\\CM33_Projects\\__repo__"
+    "coreId": "cm33_MIMX8UD7xxx08"
   }
 }
