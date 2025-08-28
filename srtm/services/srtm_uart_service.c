@@ -127,8 +127,10 @@ srtm_status_t SRTM_UartService_ReceiveRequest(srtm_service_t service, srtm_reque
                 adapter->sendNotify(adapter->service, &srtm_uart_channels[i], TTY_RPMSG_COMMAND_WRITE, NULL, 0);
                 break;
             case TTY_RPMSG_COMMAND_READ:
-                srtm_uart_channels[i].read_enable = true;
-                xTaskCreate(uart_rx_task, "UART RX", 1024, iface, 3, NULL);
+                if (!srtm_uart_channels[i].read_enable){
+                    srtm_uart_channels[i].read_enable = true;
+                    xTaskCreate(uart_rx_task, "UART RX", 1024, iface, 3, NULL);
+                }
                 break;
             case TTY_RPMSG_COMMAND_STOP:
                 srtm_uart_channels[i].read_enable = false;
