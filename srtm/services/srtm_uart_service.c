@@ -142,6 +142,8 @@ srtm_status_t SRTM_UartService_ReceiveRequest(srtm_service_t service, srtm_reque
                 SRTM_DEBUG_MESSAGE(SRTM_DEBUG_VERBOSE_INFO, "%s: set baudrate to %d bps\r\n", __func__, uartReq->baudrate);
                 break;
             case TTY_RPMSG_COMMAND_INIT:
+                /* Make sure to set new channel after reboot*/
+                srtm_uart_channels[i].chan = channel;
                 uart_adapter->ops.init(uart_adapter, iface);
                 adapter->sendNotify(adapter->service, &srtm_uart_channels[i], TTY_RPMSG_COMMAND_INIT, NULL, 0);
                 SRTM_DEBUG_MESSAGE(SRTM_DEBUG_VERBOSE_INFO, "%s: init uart iface %d\r\n", __func__, uartReq->bus_id);
