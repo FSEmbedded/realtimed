@@ -6,11 +6,12 @@ The following services are currently supported for Linux
 - IO including GPIO IRQ handling
 - I2C/I3C as master
 - LifeCycle service
-
-TODOs:
 - PWM services
 - LPAudio services
 - UART services
+
+TODOs:
+- SPI-Services
 
 ## Import Project with MCUXpresso for VS Code
 
