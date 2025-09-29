@@ -58,7 +58,6 @@ static srtm_status_t SRTM_PwmService_Request(srtm_service_t service, srtm_reques
     payloadLen = SRTM_CommMessage_GetPayloadLen(request);
     (void)payloadLen; /* try to fix warning: variable 'payloadLen' set but not used */
    assert(pwmReq);
-   assert((uint32_t)(pwmReq->len + sizeof(struct _srtm_pwm_payload) - sizeof(pwmReq->data[0])) <= payloadLen);
 
     response = SRTM_Response_Create(channel, SRTM_PWM_CATEGORY, SRTM_PWM_VERSION, command,
                                     (uint16_t)sizeof(struct _srtm_pwm_payload));
@@ -88,7 +87,6 @@ static srtm_status_t SRTM_PwmService_Request(srtm_service_t service, srtm_reques
         switch (command)
         {
             case SRTM_PWM_CMD_GET:
-                assert(adapter->getPwm);
                 status             = pwm_adapter->ops.getPwm_ns(pwm_adapter, pwmResp->chipId, pwmResp->channelId, &period, &duty,
                                                      &pwmResp->polarity, &pwmResp->enable);
                 pwmResp->period    = period;
@@ -97,7 +95,6 @@ static srtm_status_t SRTM_PwmService_Request(srtm_service_t service, srtm_reques
                     status == SRTM_Status_Success ? SRTM_PWM_RETURN_CODE_SUCEESS : SRTM_PWM_RETURN_CODE_FAIL;
                 break;
             case SRTM_PWM_CMD_SET:
-                assert(adapter->setPwm);
                 status = pwm_adapter->ops.setPwm_ns(pwm_adapter, pwmReq->chipId, pwmResp->channelId, pwmResp->period,
                                          pwmResp->dutyCycle, pwmResp->polarity, pwmResp->enable);
                 pwmResp->retCode =
