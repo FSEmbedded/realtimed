@@ -180,7 +180,7 @@ int __init_pwm_handle(struct pwm_chip *pwm_chip, struct dev *tpm_dev, uint8_t ch
     tpm_config_t tpmInfo;
 
     memcpy(&pwm_chip->dev, tpm_dev, sizeof(struct dev));
-    
+
     pwm_chip->chipId = chipId;
     pwm_chip->num_channels = numChannels;
     pwm_chip->channels = pvPortMalloc(sizeof(struct pwm_channel)*numChannels);
@@ -188,14 +188,14 @@ int __init_pwm_handle(struct pwm_chip *pwm_chip, struct dev *tpm_dev, uint8_t ch
             return -ENOMEM;
 
     CLOCK_SetIpSrcDiv(pwm_chip->dev.ip_name, pwm_chip->dev.ip_src, 1U, 0U);
-  
+
     RESET_PeripheralReset(pwm_chip->dev.reset);
-    
+
     TPM_GetDefaultConfig(&tpmInfo);
 
     /* Initialize TPM module */
     TPM_Init((TPM_Type *)pwm_chip->dev.base_addr, &tpmInfo);
-    
+
     return 0;
 }
 
@@ -212,7 +212,7 @@ int init_pwm_adapter(struct pwm_adapter *pwm_adapter, struct dev *tpm_devs, enum
 
         pwm_adapter->num_chips = 1;
         pwm_adapter->pwm_chip = pwm_chip;
-        __init_pwm_handle(&pwm_chip[0], &tpm_devs[3], 0, 6);
+        __init_pwm_handle(&pwm_chip[0], &tpm_devs[2], 1, 2);
         break;
 #endif /* CONFIG_BOARD_PICOCOREMX8ULP */
 #ifdef CONFIG_BOARD_OSMSFMX8ULP

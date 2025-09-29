@@ -48,7 +48,7 @@ int BOARD_get_type(void)
     void *fdt = BOARD_get_fdt_config((void *)CFG_FUS_BOARDCFG_ADDR);
     int offs, len, ret;
     const void *prop;
-    
+
     if(is_fdt_read)
         return btype;
 
@@ -84,8 +84,8 @@ int BOARD_get_type(void)
         btype = BT_SOLDERCOREMX8ULP;
         return btype;
     }
-    
-    return btype;    
+
+    return btype;
 }
 
 struct board_descr *get_board_description(void)
@@ -93,13 +93,52 @@ struct board_descr *get_board_description(void)
     return gd_board_descr;
 }
 
+static void BOARD_get_features(struct board_descr *bdescr)
+{
+    /* Clear all features */
+    bdescr->bfeatures = 0;
+
+    void *fdt = BOARD_get_fdt_config((void *)CFG_FUS_BOARDCFG_ADDR);
+    int offs, len;
+    const void *prop;
+
+    if(fdt_check_header(fdt) != 0){
+        return;
+    }
+
+    offs = fdt_path_offset(fdt, "/board-cfg");
+    if(offs <= 0){
+        return;
+    }
+
+    prop = fdt_getprop(fdt, offs, "have-qspi-psram", &len);
+    if(prop && len == 0){
+        bdescr->bfeatures |= FEAT_QSPI_PSRAM;
+    }
+
+    prop = fdt_getprop(fdt, offs, "have-qspi-flash", &len);
+    if(prop && len == 0){
+        bdescr->bfeatures |= FEAT_QSPI_FLASH;
+    }
+
+    prop = fdt_getprop(fdt, offs, "have-bluetooth", &len);
+    if(prop && len == 0){
+        bdescr->bfeatures |= FEAT_BLUETOOTH;
+    }
+
+    prop = fdt_getprop(fdt, offs, "have-i2c-d-rtd", &len);
+    if(prop && len == 0){
+        bdescr->bfeatures |= FEAT_I2C_D_RTD;
+    }
+};
+
 int BOARD_InitBoardDescr(enum board_types btype)
 {
     struct dev tpm_devs[] = {
         {
             .base_addr  = TPM0_BASE,
             .ip_name    = kCLOCK_Tpm0,
-            .ip_src     = kCLOCK_Pcc1BusIpSrcCm33Bus, 
+            .ip_src     = kCLOCK_Pcc1BusIpSrcCm33Bus,
             .instance   = 0,
             .irq        = TPM0_IRQn,
             .irqHandler = NULL,
@@ -108,7 +147,7 @@ int BOARD_InitBoardDescr(enum board_types btype)
         {
             .base_addr  = TPM1_BASE,
             .ip_name    = kCLOCK_Tpm1,
-            .ip_src     = kCLOCK_Pcc1BusIpSrcCm33Bus, 
+            .ip_src     = kCLOCK_Pcc1BusIpSrcCm33Bus,
             .instance   = 1,
             .irq        = TPM1_IRQn,
             .irqHandler = NULL,
@@ -117,7 +156,7 @@ int BOARD_InitBoardDescr(enum board_types btype)
         {
             .base_addr  = TPM2_BASE,
             .ip_name    = kCLOCK_Tpm2,
-            .ip_src     = kCLOCK_Pcc2BusIpSrcFusionDspBus, 
+            .ip_src     = kCLOCK_Pcc2BusIpSrcFusionDspBus,
             .instance   = 2,
             .irq        = TPM2_IRQn,
             .irqHandler = NULL,
@@ -126,7 +165,7 @@ int BOARD_InitBoardDescr(enum board_types btype)
         {
             .base_addr  = TPM3_BASE,
             .ip_name    = kCLOCK_Tpm3,
-            .ip_src     = kCLOCK_Pcc2BusIpSrcFusionDspBus, 
+            .ip_src     = kCLOCK_Pcc2BusIpSrcFusionDspBus,
             .instance   = 3,
             .irq        = TPM3_IRQn,
             .irqHandler = NULL,
@@ -138,7 +177,7 @@ int BOARD_InitBoardDescr(enum board_types btype)
         {
             .base_addr  = LPI2C0_BASE,
             .ip_name    = kCLOCK_Lpi2c0,
-            .ip_src     = kCLOCK_Pcc1BusIpSrcCm33Bus, 
+            .ip_src     = kCLOCK_Pcc1BusIpSrcCm33Bus,
             .instance   = 0,
             .irq        = LPI2C0_IRQn,
             .irqHandler = NULL,
@@ -147,7 +186,7 @@ int BOARD_InitBoardDescr(enum board_types btype)
         {
             .base_addr  = LPI2C1_BASE,
             .ip_name    = kCLOCK_Lpi2c1,
-            .ip_src     = kCLOCK_Pcc1BusIpSrcCm33Bus, 
+            .ip_src     = kCLOCK_Pcc1BusIpSrcCm33Bus,
             .instance   = 1,
             .irq        = LPI2C1_IRQn,
             .irqHandler = NULL,
@@ -156,7 +195,7 @@ int BOARD_InitBoardDescr(enum board_types btype)
         {
             .base_addr  = LPI2C2_BASE,
             .ip_name    = kCLOCK_Lpi2c2,
-            .ip_src     = kCLOCK_Pcc1BusIpSrcCm33Bus, 
+            .ip_src     = kCLOCK_Pcc1BusIpSrcCm33Bus,
             .instance   = 2,
             .irq        = LPI2C2_IRQn,
             .irqHandler = NULL,
@@ -165,7 +204,7 @@ int BOARD_InitBoardDescr(enum board_types btype)
         {
             .base_addr  = LPI2C3_BASE,
             .ip_name    = kCLOCK_Lpi2c3,
-            .ip_src     = kCLOCK_Pcc1BusIpSrcCm33Bus, 
+            .ip_src     = kCLOCK_Pcc1BusIpSrcCm33Bus,
             .instance   = 3,
             .irq        = LPI2C3_IRQn,
             .irqHandler = NULL,
@@ -273,7 +312,7 @@ int BOARD_InitBoardDescr(enum board_types btype)
         {
             .base_addr  = GPIOA_BASE,
             .ip_name    = kCLOCK_RgpioA,
-            .ip_src     = 0, 
+            .ip_src     = 0,
             .instance   = 0,
             .irq        = 0,
             .irqHandler = NULL,
@@ -282,7 +321,7 @@ int BOARD_InitBoardDescr(enum board_types btype)
         {
             .base_addr  = GPIOB_BASE,
             .ip_name    = kCLOCK_RgpioB,
-            .ip_src     = 0, 
+            .ip_src     = 0,
             .instance   = 1,
             .irq        = 0,
             .irqHandler = NULL,
@@ -291,7 +330,7 @@ int BOARD_InitBoardDescr(enum board_types btype)
         {
             .base_addr  = GPIOC_BASE,
             .ip_name    = kCLOCK_RgpioC,
-            .ip_src     = 0, 
+            .ip_src     = 0,
             .instance   = 2,
             .irq        = 0,
             .irqHandler = NULL,
@@ -304,21 +343,22 @@ int BOARD_InitBoardDescr(enum board_types btype)
 
     bdescr = pvPortMalloc(sizeof(struct board_descr));
     if(!bdescr)
-        return -ENOMEM;
+    return -ENOMEM;
 
     memset(bdescr, 0, sizeof(struct board_descr));
-
     bdescr->btype = btype;
 
-    ret = init_dbg_info(&bdescr->dbg_info, uart_devs, btype);
+    BOARD_get_features(bdescr);
+
+    ret = init_dbg_info(&bdescr->dbg_info, uart_devs, bdescr);
     if(ret)
         return ret;
 
-    ret = init_uart_adapter(&bdescr->uart_adapter, uart_devs, btype);
+    ret = init_uart_adapter(&bdescr->uart_adapter, uart_devs, bdescr);
     if(ret)
         return ret;
 
-    ret = init_i2c_adapter(&bdescr->i2c_adapter, i2c_devs, btype);
+    ret = init_i2c_adapter(&bdescr->i2c_adapter, i2c_devs, bdescr);
     if(ret)
         return ret;
 
@@ -335,6 +375,7 @@ int BOARD_InitBoardDescr(enum board_types btype)
         return ret;
 
     gd_board_descr = bdescr;
+
     return 0;
 }
 

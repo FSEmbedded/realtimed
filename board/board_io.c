@@ -436,7 +436,7 @@ int init_io_adapter(struct io_adapter *io_adapter, struct dev *io_devs, enum boa
         return -ENOMEM;
 
     memset(io_iface, 0, sizeof(struct io_iface) * 3);
-    
+
     io_adapter->num_gpio = 3;
     io_adapter->io_iface = io_iface;
 
@@ -446,7 +446,7 @@ int init_io_adapter(struct io_adapter *io_adapter, struct dev *io_devs, enum boa
         vPortFree(io_iface);
         return ret;
     }
-    
+
     /* GPIO_B */
     ret = init_io_iface(&io_iface[1], &io_devs[1], btype);
     if(ret){

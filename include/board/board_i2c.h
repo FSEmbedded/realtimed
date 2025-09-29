@@ -90,6 +90,6 @@ struct i2c_adapter {
     struct i2c_ops ops;
 };
 
-int init_i2c_adapter(struct i2c_adapter *i2c_adapter, struct dev *i2c_devs, enum board_types btype);
+int init_i2c_adapter(struct i2c_adapter *i2c_adapter, struct dev *i2c_devs, struct board_descr *bdescr);
 
 #endif /* __BOARD_I2C_H */

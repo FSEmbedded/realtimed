@@ -39,8 +39,6 @@ static void __init_uart(struct uart_iface *uart_iface)
     RESET_PeripheralReset(dev->reset);
 }
 
-int init_dbg_info(struct dbg_info *dbg_info, struct dev *uart_devs, enum board_types btype);
-
 void BOARD_InitDebugConsole(struct dbg_info *dbg_info)
 {
     struct uart_iface *uart_iface = dbg_info->uart_iface;
@@ -118,19 +116,19 @@ static int is_transfer_complete(struct uart_adapter *uart_adapter, struct uart_i
     return (uart_iface->handle.txState != kLPUART_TxBusy);
 }
 
-int init_uart_adapter(struct uart_adapter *uart_adapter, struct dev *uart_devs, enum board_types btype)
+int init_uart_adapter(struct uart_adapter *uart_adapter, struct dev *uart_devs, struct board_descr *bdescr)
 {
     struct uart_iface *iuart;
     int ret = 0;
 
-    switch(btype){
+    switch(bdescr->btype){
 #ifdef CONFIG_BOARD_PICOCOREMX8ULP
         case BT_PICOCOREMX8ULP:
             iuart = pvPortMalloc(sizeof(struct uart_iface));
             if(!iuart)
                 return -ENOMEM;
 
-            ret = __init_uart_iface(&iuart[0], &uart_devs[1], 2);
+            ret = __init_uart_iface(&iuart[0], &uart_devs[0], 1);
             if(ret){
                 vPortFree(iuart);
                 return ret;
@@ -192,7 +190,7 @@ int init_uart_adapter(struct uart_adapter *uart_adapter, struct dev *uart_devs, 
     return 0;
 }
 
-int init_dbg_info(struct dbg_info *dbg_info, struct dev *uart_devs, enum board_types btype)
+int init_dbg_info(struct dbg_info *dbg_info, struct dev *uart_devs, struct board_descr *bdescr)
 {
     struct uart_iface *uart_iface = NULL;
     int ret = 0;
@@ -202,9 +200,9 @@ int init_dbg_info(struct dbg_info *dbg_info, struct dev *uart_devs, enum board_t
         return -ENOMEM;
     }
 
-    switch(btype){
+    switch(bdescr->btype){
         case BT_PICOCOREMX8ULP:
-            ret = __init_uart_iface(uart_iface, &uart_devs[0], 0);
+            ret = __init_uart_iface(uart_iface, &uart_devs[1], 0);
             break;
         case BT_OSMSFMX8ULP:
             ret = __init_uart_iface(uart_iface, &uart_devs[0], 0);

@@ -18,6 +18,6 @@ void BOARD_InitBootPins_pre(void);
  * @brief Calls initialization functions.
  * @param btype: board_type ID
  */
-void BOARD_InitBootPins(enum board_types btype);
+void BOARD_InitBootPins(struct board_descr *bdescr);
 
 #endif /* __PIN_MUX_H */

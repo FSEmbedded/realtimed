@@ -7,7 +7,7 @@ SET (MCUXPRESSO_CMAKE_FORMAT_MAJOR_VERSION 2)
 SET (MCUXPRESSO_CMAKE_FORMAT_MINOR_VERSION 0)
 
 #APP VERSION
-SET(RDAEMON_VERSION "0.3.1")
+SET(RDAEMON_VERSION "0.3.2")
 
 include(ide_overrides.cmake OPTIONAL)
 
@@ -47,7 +47,7 @@ include(${ProjDirPath}/flags.cmake)
 
 include(${ProjDirPath}/config.cmake)
 
-add_executable(${MCUX_SDK_PROJECT_NAME} 
+add_executable(${MCUX_SDK_PROJECT_NAME}
 "${ProjDirPath}/../board/board_pwm.c"
 "${ProjDirPath}/../srtm/services/srtm_pwm_service.c"
 "${ProjDirPath}/../FreeRTOSConfig.h"
@@ -95,9 +95,9 @@ set_source_files_properties("${ProjDirPath}/../FreeRTOSConfig.h" PROPERTIES COMP
 
 include(${SdkRootDirPath}/core/devices/MIMX8UD7/all_lib_device.cmake)
 
-IF(NOT DEFINED TARGET_LINK_SYSTEM_LIBRARIES)  
-    SET(TARGET_LINK_SYSTEM_LIBRARIES "-lm -lc -lgcc -lnosys")  
-ENDIF()  
+IF(NOT DEFINED TARGET_LINK_SYSTEM_LIBRARIES)
+    SET(TARGET_LINK_SYSTEM_LIBRARIES "-lm -lc -lgcc -lnosys")
+ENDIF()
 
 TARGET_LINK_LIBRARIES(${MCUX_SDK_PROJECT_NAME} PRIVATE -Wl,--start-group)
 
