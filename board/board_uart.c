@@ -71,9 +71,14 @@ static void BOARD_LPUART_Init(struct uart_adapter *uart_adapter, struct uart_ifa
 
 static void BOARD_LPUART_Deinit(struct uart_adapter *uart_adapter, struct uart_iface *uart_iface)
 {
-    struct dev *dev = &uart_iface->dev;
+    // struct dev *dev = &uart_iface->dev;
 
-    LPUART_Deinit((LPUART_Type *)dev->base_addr);
+    /* TODO:
+     * The Clock disable part seems to be not working as expected.
+     * The CLK will be disabled, but after a short time, the system hangs.
+     * It looks like someone tries to access the LPUART again. Maybe a caching issue?
+     */
+    // LPUART_Deinit((LPUART_Type *)dev->base_addr);
 }
 
 static status_t BOARD_LPUART_Write(struct uart_adapter *uart_adaper,

@@ -2,7 +2,7 @@
  * Copyright 2021 NXP
  * All rights reserved.
  *
- * * Copyright (c) 2024 F&S Elektronik Systeme GmbH
+ * Copyright (c) 2024 F&S Elektronik Systeme GmbH
  *
  * SPDX-License-Identifier: BSD-3-Clause
  */
