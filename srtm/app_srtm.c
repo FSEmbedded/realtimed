@@ -1,9 +1,9 @@
 /*
  * Copyright 2021-2022 NXP
  * All rights reserved.
- * 
+ *
  * Copyright (c) 2024 F&S Elektronik Systeme GmbH
- * 
+ *
  * This program includes portions of code licensed under the BSD-3-Clause License.
  * Modifications and extensions were made by F&S Elektronik Systeme GmbH in 2024.
  *
@@ -23,9 +23,13 @@
 #include <srtm/srtm_io_service.h>
 #include <srtm/srtm_lfcl_service.h>
 #include <srtm/srtm_pwm_service.h>
-#include <srtm/app_srtm.h>
+#include <srtm/srtm_audio_service.h>
+#include <srtm/srtm_sai_edma_adapter.h>
+#include <srtm/srtm_uart_service.h>
+#include <srtm/srtm_keypad_service.h>
 #include <board/board.h>
 #include <board/board_i2c.h>
+#include <board/board_sai.h>
 #include "fsl_mu.h"
 #include "fsl_wuu.h"
 #include "fsl_upower.h"
@@ -33,10 +37,7 @@
 #include "rsc_table.h"
 #include "fsl_bbnsm.h"
 #include "fsl_sentinel.h"
-#include <srtm/srtm_audio_service.h>
-#include <srtm/srtm_sai_edma_adapter.h>
-#include <board/board_sai.h>
-#include <srtm/srtm_uart_service.h>
+#include <srtm/app_srtm.h>
 
 void APP_SRTM_WakeupCA35(void);
 
@@ -95,6 +96,7 @@ static srtm_peercore_t core;
 static struct srtm_i2c_adapter srtm_i2c_adapter;
 static struct srtm_pwm_adapter srtm_pwm_adapter;
 static struct srtm_io_adapter srtm_io_adapter;
+static srtm_service_t keypadService;
 static SemaphoreHandle_t monSig;
 static struct rpmsg_lite_instance *rpmsgHandle;
 static app_rpmsg_monitor_t rpmsgMonitor;
@@ -106,6 +108,9 @@ static TimerHandle_t restoreRegValOfMuTimer; /* use the timer to restore registe
 
 static TimerHandle_t
     chngModeFromActToDslForApdTimer; /* use the timer to change mode of APD from active mode to Deep Sleep Mode */
+static TimerHandle_t keypadSuspendTimer;   /* use the timer to simulate keypad suspend key pressed event */
+static TimerHandle_t keypadPowerTimer;   /* use the timer to simulate keypad power key pressed event */
+static TimerHandle_t powerOffMCoreTimer;   /* use the timer to power off MCore when APD enter DPD mode */
 
 static app_irq_handler_t irqHandler;
 static void *irqHandlerParam;
@@ -427,6 +432,11 @@ void BBNSM_IRQHandler(void)
         {
             /* Wakeup A Core (A35) */
             APP_WakeupACore();
+            xTimerStart(keypadPowerTimer, portMAX_DELAY);
+        }
+        else if (AD_CurrentMode == AD_ACT) /* Application Domain is in Active Mode */
+        {
+            xTimerStart(keypadSuspendTimer, portMAX_DELAY);
         }
         /* Clear BBNSM button off interrupt */
         BBNSM_ClearStatusFlags(BBNSM, kBBNSM_PWR_OFF_InterruptFlag);
@@ -508,6 +518,43 @@ static void APP_LinkupTimerCallback(TimerHandle_t xTimer)
     }
 }
 
+static void APP_keypadSuspendTimerCallback(TimerHandle_t xTimer)
+{
+    if (AD_CurrentMode == AD_ACT)
+    {
+        PRINTF("Notify Suspend Key Pressed Event to A Core\r\n");
+        SRTM_KeypadService_NotifyKeypadEvent(keypadService, APP_KEYPAD_SUSPEND_KEY_IDX, SRTM_KeypadValuePressed);
+        SRTM_KeypadService_NotifyKeypadEvent(keypadService, APP_KEYPAD_SUSPEND_KEY_IDX, SRTM_KeypadValueReleased);
+        xTimerStop(keypadSuspendTimer, portMAX_DELAY);
+    } else {
+        xTimerStart(keypadSuspendTimer, portMAX_DELAY);
+    }
+}
+
+static void APP_keypadPowerTimerCallback(TimerHandle_t xTimer)
+{
+    if (AD_CurrentMode == AD_ACT) {
+        PRINTF("Notify Wakeup Key Pressed Event to A Core\r\n");
+        SRTM_KeypadService_NotifyKeypadEvent(keypadService, APP_KEYPAD_WAKEUP_KEY_IDX, SRTM_KeypadValuePressed);
+        SRTM_KeypadService_NotifyKeypadEvent(keypadService, APP_KEYPAD_WAKEUP_KEY_IDX, SRTM_KeypadValueReleased);
+        xTimerStop(keypadPowerTimer, portMAX_DELAY);
+    } else {
+        xTimerStart(keypadSuspendTimer, portMAX_DELAY);
+    }
+}
+
+static void APP_powerOffMCoreTimerCallback(TimerHandle_t xTimer)
+{
+    volatile uint32_t *bbnsm_ctrl = (void *)(BBNSM_BASE + 0x8);
+    if (AD_CurrentMode == AD_DPD)
+    {
+        PRINTF("Power Off: Press ON/OFF for reboot \r\n");
+        vTaskDelay(pdMS_TO_TICKS(1000));
+        *bbnsm_ctrl |= (1U << 25);
+    }
+    xTimerStop(powerOffMCoreTimer, portMAX_DELAY);
+}
+
 static void APP_SRTM_NotifyPeerCoreReady(struct rpmsg_lite_instance *rpmsgHandle, bool ready)
 {
     /* deinit and init app task(str_echo/pingpong rpmsg) in APP_SRTM_StateReboot only */
@@ -566,6 +613,11 @@ static void APP_SRTM_Linkup(void)
     chan               = SRTM_RPMsgEndpoint_Create(&rpmsgConfig);
     SRTM_PeerCore_AddChannel(core, chan);
 
+    /* Create and add SRTM Keypad channel to peer core */
+    rpmsgConfig.epName = APP_SRTM_KEYPAD_CHANNEL_NAME;
+    chan               = SRTM_RPMsgEndpoint_Create(&rpmsgConfig);
+    SRTM_PeerCore_AddChannel(core, chan);
+
     SRTM_Dispatcher_AddPeerCore(disp, core);
 }
 
@@ -605,7 +657,7 @@ static void APP_SRTM_GpioReset(void)
 
         for(i1 = 0; i1 < io_iface->num_pins; i1++){
             io_pin = &io_iface->io_pins[i1];
-            
+
             if(io_pin->overridden){
                 /* The IO is configured by CM33 instead of CA35, don't reset HW configuration. */
                 io_pin->event  = IO_EventNone;
@@ -1028,7 +1080,7 @@ void APP_SRTM_IO_ISR(void *pvParameter1, uint32_t ulParameter2)
         case CONFIG_GPIOA_IFACEID:
             APP_SRTM_GPIOA_ISR_M33(pinID);
             break;
-        case CONFIG_GPIOB_IFACEID: 
+        case CONFIG_GPIOB_IFACEID:
             APP_SRTM_GPIOB_ISR_M33(pinID);
             break;
         case CONFIG_GPIOC_IFACEID:
@@ -1140,6 +1192,15 @@ static void APP_SRTM_InitIOService(struct board_descr *bdescr)
     SRTM_Dispatcher_RegisterService(disp, srtm_io_adapter.service);
 }
 
+static void APP_SRTM_InitIoKeyService(void)
+{
+    PRINTF("APP_SRTM: Start %s\r\n", __func__);
+    keypadService = SRTM_KeypadService_Create();
+    SRTM_KeypadService_RegisterKey(keypadService, APP_KEYPAD_SUSPEND_KEY_IDX, NULL, NULL);
+    SRTM_KeypadService_RegisterKey(keypadService, APP_KEYPAD_WAKEUP_KEY_IDX, NULL, NULL);
+    SRTM_Dispatcher_RegisterService(disp, keypadService);
+}
+
 static void APP_SRTM_A35ResetHandler(void)
 {
     portBASE_TYPE taskToWake = pdFALSE;
@@ -1188,15 +1249,8 @@ int32_t MU0_A_IRQHandler(void)
             EnableIRQ(CMC1_IRQn);
             /* Help A35 to setup TRDC after A35 entered deep power down moade */
             BOARD_SetTrdcAfterApdReset();
-            /*
-             *  When RTD is the ower of LPAV and APD enter PD mode, RTD need poweroff LDO1, reduce BUCK3 to 0.73V,
-             *  Set flag to put ddr into retention when RTD enter PD mode.
-             *  otherwise APD side is responsible to control them in PD mode.
-             */
-            srtm_procedure_t proc = SRTM_Procedure_Create(APP_SRTM_SetLPAV, (void *)AD_DPD, NULL);
 
-            assert(proc);
-            SRTM_Dispatcher_PostProc(disp, proc);
+            xTimerStart(powerOffMCoreTimer, portMAX_DELAY);
         }
         else
         {
@@ -1368,6 +1422,9 @@ static void APP_SRTM_InitServices(struct board_descr *bdescr)
     APP_SRTM_InitPwmService(bdescr);
     APP_SRTM_InitAudioService(bdescr);
     APP_SRTM_InitUartService(bdescr);
+    APP_SRTM_InitIoKeyService();
+
+    EnableIRQ(BBNSM_IRQn);
 }
 
 void APP_PowerOffCA35(void)
@@ -1438,15 +1495,15 @@ static void SRTM_MonitorTask(void *pvParameters)
                  * Therefore The U-Boot handshake is done,
                  * before SRTM starts up to get board-cfgs
                  */
-                if (state != APP_SRTM_StateInit && BOARD_HandshakeWithUboot())
-                {
-                    /* CMC1(CMC_AD) is belongs to Application Domain, so if want to access these registers of CMC1, pls
-                     * make sure that mcore can access CMC1(mcore can access CMC1 after BOARD_HandshakeWithUboot) */
-                    CMC_ADClrAD_PSDORF(
-                        CMC_AD,
-                        CMC_AD_AD_PSDORF_AD_PERIPH(
-                            1)); /* need clear it, unless A Core cannot reboot after A Core suspend and resume back */
-                }
+                if (state != APP_SRTM_StateInit)
+                    BOARD_HandshakeWithUboot();
+
+                /* CMC1(CMC_AD) is belongs to Application Domain, so if want to access these registers of CMC1, pls
+                 * make sure that mcore can access CMC1(mcore can access CMC1 after BOARD_HandshakeWithUboot) */
+                CMC_ADClrAD_PSDORF(
+                    CMC_AD,
+                    CMC_AD_AD_PSDORF_AD_PERIPH(
+                        1)); /* need clear it, unless A Core cannot reboot after A Core suspend and resume back */
 
                 /* enable CMC1 interrupt after handshake with uboot(M Core cannot access CMC1 that belongs to
                  * Application Domain when Power On Reset; M Core can access CMC1 after uboot(running on A Core) enable
@@ -1581,6 +1638,11 @@ void APP_SRTM_Init(void)
 
     monSig = xSemaphoreCreateBinary();
     assert(monSig);
+
+    keypadSuspendTimer = xTimerCreate("keypadSuspendTimer", APP_MS2TICK(500), pdFALSE, NULL, APP_keypadSuspendTimerCallback);
+    keypadPowerTimer = xTimerCreate("keypadPowerTimer", APP_MS2TICK(500), pdFALSE, NULL, APP_keypadPowerTimerCallback);
+    powerOffMCoreTimer =
+        xTimerCreate("powerOffMCoreTimer", APP_MS2TICK(500), pdFALSE, NULL, APP_powerOffMCoreTimerCallback);
 
     /* Note: Create a task to refresh S400(sentinel) watchdog timer to keep S400 alive, the task will be removed after
      * the bug is fixed in soc A1 */

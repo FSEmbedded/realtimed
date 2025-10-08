@@ -84,6 +84,7 @@ add_executable(${MCUX_SDK_PROJECT_NAME}
 "${ProjDirPath}/../srtm/services/srtm_audio_service.c"
 "${ProjDirPath}/../srtm/services/srtm_sai_edma_adapter.c"
 "${ProjDirPath}/../srtm/services/srtm_uart_service.c"
+"${ProjDirPath}/../srtm/services/srtm_keypad_service.c"
 )
 
 target_include_directories(${MCUX_SDK_PROJECT_NAME} PRIVATE
