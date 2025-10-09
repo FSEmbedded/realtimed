@@ -136,4 +136,7 @@
 #define CONFIG_GPIOC_IFACEID 2
 #endif
 
+// #define CONFIG_TIMEOUT_WAKEUP_MCORE
+// #define CONFIG_TIMEOUT_WAKEUP_SEC 10
+
 #endif /* __BOARD_CONFIG_H */
