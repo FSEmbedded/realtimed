@@ -38,6 +38,9 @@
 #include "fsl_bbnsm.h"
 #include "fsl_sentinel.h"
 #include <srtm/app_srtm.h>
+#include "fsl_lptmr.h"
+#include "lpm.h"
+
 
 void APP_SRTM_WakeupCA35(void);
 
@@ -111,6 +114,7 @@ static TimerHandle_t
 static TimerHandle_t keypadSuspendTimer;   /* use the timer to simulate keypad suspend key pressed event */
 static TimerHandle_t keypadPowerTimer;   /* use the timer to simulate keypad power key pressed event */
 static TimerHandle_t powerOffMCoreTimer;   /* use the timer to power off MCore when APD enter DPD mode */
+static TimerHandle_t suspendMCoreTimer;   /* use the timer to suspend MCore when APD enter PD mode */
 
 static app_irq_handler_t irqHandler;
 static void *irqHandlerParam;
@@ -402,6 +406,15 @@ void WUU0_IRQHandler(void)
     {
         irqHandler(WUU0_IRQn, irqHandlerParam);
     }
+
+    if (WUU_GetInternalWakeupModuleFlag(WUU0, WUU_MODULE_LPTMR1))
+    {
+        /* Woken up by LPTMR, then clear LPTMR flag. */
+        LPTMR_ClearStatusFlags(LPTMR1, kLPTMR_TimerCompareFlag);
+        LPTMR_DisableInterrupts(LPTMR1, kLPTMR_TimerInterruptEnable);
+        LPTMR_StopTimer(LPTMR1);
+        APP_WakeupACore();
+    }
 }
 
 void BBNSM_IRQHandler(void)
@@ -554,6 +567,48 @@ static void APP_powerOffMCoreTimerCallback(TimerHandle_t xTimer)
     }
     xTimerStop(powerOffMCoreTimer, portMAX_DELAY);
 }
+
+static void APP_suspendMCoreTimerCallback(TimerHandle_t xTimer)
+{
+    #if defined(CONFIG_TIMEOUT_WAKEUP_MCORE)
+    lptmr_config_t lptmrConfig;
+
+    /* Setup LPTMR. */
+    LPTMR_GetDefaultConfig(&lptmrConfig);
+    lptmrConfig.prescalerClockSource = kLPTMR_PrescalerClock_1;  /* Use RTC 1KHz as clock source. */
+    lptmrConfig.bypassPrescaler      = false;
+    lptmrConfig.value                = kLPTMR_Prescale_Glitch_3; /* Divide clock source by 16. */
+    LPTMR_Init(LPTMR1, &lptmrConfig);
+    NVIC_SetPriority(LPTMR1_IRQn, APP_LPTMR1_IRQ_PRIO);
+
+    EnableIRQ(LPTMR1_IRQn);
+
+    LPTMR_SetTimerPeriod(LPTMR1, (1000UL * CONFIG_TIMEOUT_WAKEUP_SEC / 16U));
+    LPTMR_StartTimer(LPTMR1);
+    LPTMR_EnableInterrupts(LPTMR1, kLPTMR_TimerInterruptEnable);
+
+    /* Set WUU LPTMR1 module wakeup source. */
+    APP_SRTM_SetWakeupModule(WUU_MODULE_LPTMR1, LPTMR1_WUU_WAKEUP_EVENT);
+    PCC1->PCC_LPTMR1 &= ~PCC1_PCC_LPTMR1_SSADO_MASK;
+    PCC1->PCC_LPTMR1 |= PCC1_PCC_LPTMR1_SSADO(1);
+#endif
+    xTimerStop(suspendMCoreTimer, portMAX_DELAY);
+    LPM_SystemSleep();
+}
+
+void LPTMR1_IRQHandler(void)
+{
+    BOARD_InitDebugConsole(&(get_board_description()->dbg_info));
+    if (kLPTMR_TimerInterruptEnable & LPTMR_GetEnabledInterrupts(LPTMR1))
+    {
+        LPTMR_ClearStatusFlags(LPTMR1, kLPTMR_TimerCompareFlag);
+        LPTMR_DisableInterrupts(LPTMR1, kLPTMR_TimerInterruptEnable);
+        LPTMR_StopTimer(LPTMR1);
+        if (AD_CurrentMode == AD_PD && AD_WillEnterMode == AD_ACT)
+            APP_WakeupACore();
+    }
+}
+
 
 static void APP_SRTM_NotifyPeerCoreReady(struct rpmsg_lite_instance *rpmsgHandle, bool ready)
 {
@@ -1242,6 +1297,7 @@ int32_t MU0_A_IRQHandler(void)
             /* Help A35 to setup TRDC after A35 entered deep power down moade */
             BOARD_SetTrdcAfterApdReset();
 
+            /* Node: We trigger a hard PowerOFF via BBNSM in this state */
             xTimerStart(powerOffMCoreTimer, portMAX_DELAY);
         }
         else
@@ -1259,6 +1315,9 @@ int32_t MU0_A_IRQHandler(void)
 
             assert(proc);
             SRTM_Dispatcher_PostProc(disp, proc);
+
+            if (!BOARD_IsLPAVOwnedByRTD())
+                xTimerStart(suspendMCoreTimer, portMAX_DELAY);
         }
         AD_WillEnterMode = AD_ACT;
     }
@@ -1633,6 +1692,9 @@ void APP_SRTM_Init(void)
     keypadPowerTimer = xTimerCreate("keypadPowerTimer", APP_MS2TICK(500), pdFALSE, NULL, APP_keypadPowerTimerCallback);
     powerOffMCoreTimer =
         xTimerCreate("powerOffMCoreTimer", APP_MS2TICK(500), pdFALSE, NULL, APP_powerOffMCoreTimerCallback);
+    suspendMCoreTimer =
+        xTimerCreate("suspendMCoreTimer", APP_MS2TICK(500), pdFALSE, NULL, APP_suspendMCoreTimerCallback);
+
 
     /* Note: Create a task to refresh S400(sentinel) watchdog timer to keep S400 alive, the task will be removed after
      * the bug is fixed in soc A1 */

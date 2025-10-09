@@ -69,6 +69,7 @@ typedef enum
 #define APP_WUU_IRQ_PRIO        (5U)
 #define APP_CMC1_IRQ_PRIO       (5U)
 #define APP_BBNSM_IRQ_PRIO      (5U)
+#define APP_LPTMR1_IRQ_PRIO      (5U)
 
 /* Define the timeout ms to polling the A Core link up status */
 #define APP_LINKUP_TIMER_PERIOD_MS (10U)
