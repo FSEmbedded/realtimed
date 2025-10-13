@@ -1,0 +1,75 @@
+From b36df9bbba7826a3d615559e39d27878c9838e9e Mon Sep 17 00:00:00 2001
+From: Claudio Senatore <senatore@fs-net.de>
+Date: Tue, 28 Jan 2025 11:02:03 +0100
+Subject: [PATCH] devices:MIMX8UDx:drivers:fsl_upower: prevent deadlock during
+ API CALL
+
+upwr_xcp_set_rtd_apd_llwu() seems to not respond.
+According to the API documentation, no callback function is called here. Therefore, it must be checked with upwr_poll_req_status() or upwr_req_status().
+
+Number of Attempt is used to prevent a possible deadlock.
+---
+ devices/MIMX8UD3/drivers/fsl_upower.c | 6 ++++--
+ devices/MIMX8UD5/drivers/fsl_upower.c | 6 ++++--
+ devices/MIMX8UD7/drivers/fsl_upower.c | 6 ++++--
+ 3 files changed, 12 insertions(+), 6 deletions(-)
+
+diff --git a/devices/MIMX8UD3/drivers/fsl_upower.c b/devices/MIMX8UD3/drivers/fsl_upower.c
+index f5ca3ea0a..212271a51 100644
+--- a/devices/MIMX8UD3/drivers/fsl_upower.c
++++ b/devices/MIMX8UD3/drivers/fsl_upower.c
+@@ -468,10 +468,12 @@ int UPOWER_PowerOnADInPDMode(void)
+     upwr_resp_t err = UPWR_RESP_COUNT; /* the error code */
+     int ret = -1; /* the value returned by the last request completed */
+ 
+-    status = upwr_xcp_set_rtd_apd_llwu(APD_DOMAIN, (uint32_t)true, UPOWER_Callback);
++    status = upwr_xcp_set_rtd_apd_llwu(APD_DOMAIN, (uint32_t)true, NULL);
+     if (status == 0)
+     {
+-        UPOWER_CheckReqWithArgs(UPWR_SG_EXCEPT, &sgf, &err, &ret, 0);
++        if(!callbackStatus)
++            callbackStatus = true;
++        UPOWER_CheckReqWithArgs(UPWR_SG_EXCEPT, &sgf, &err, &ret, 100);
+         assert(err == UPWR_RESP_OK);
+     }
+ 
+diff --git a/devices/MIMX8UD5/drivers/fsl_upower.c b/devices/MIMX8UD5/drivers/fsl_upower.c
+index f5ca3ea0a..212271a51 100644
+--- a/devices/MIMX8UD5/drivers/fsl_upower.c
++++ b/devices/MIMX8UD5/drivers/fsl_upower.c
+@@ -468,10 +468,12 @@ int UPOWER_PowerOnADInPDMode(void)
+     upwr_resp_t err = UPWR_RESP_COUNT; /* the error code */
+     int ret = -1; /* the value returned by the last request completed */
+ 
+-    status = upwr_xcp_set_rtd_apd_llwu(APD_DOMAIN, (uint32_t)true, UPOWER_Callback);
++    status = upwr_xcp_set_rtd_apd_llwu(APD_DOMAIN, (uint32_t)true, NULL);
+     if (status == 0)
+     {
+-        UPOWER_CheckReqWithArgs(UPWR_SG_EXCEPT, &sgf, &err, &ret, 0);
++        if(!callbackStatus)
++            callbackStatus = true;
++        UPOWER_CheckReqWithArgs(UPWR_SG_EXCEPT, &sgf, &err, &ret, 100);
+         assert(err == UPWR_RESP_OK);
+     }
+ 
+diff --git a/devices/MIMX8UD7/drivers/fsl_upower.c b/devices/MIMX8UD7/drivers/fsl_upower.c
+index f5ca3ea0a..212271a51 100644
+--- a/devices/MIMX8UD7/drivers/fsl_upower.c
++++ b/devices/MIMX8UD7/drivers/fsl_upower.c
+@@ -468,10 +468,12 @@ int UPOWER_PowerOnADInPDMode(void)
+     upwr_resp_t err = UPWR_RESP_COUNT; /* the error code */
+     int ret = -1; /* the value returned by the last request completed */
+ 
+-    status = upwr_xcp_set_rtd_apd_llwu(APD_DOMAIN, (uint32_t)true, UPOWER_Callback);
++    status = upwr_xcp_set_rtd_apd_llwu(APD_DOMAIN, (uint32_t)true, NULL);
+     if (status == 0)
+     {
+-        UPOWER_CheckReqWithArgs(UPWR_SG_EXCEPT, &sgf, &err, &ret, 0);
++        if(!callbackStatus)
++            callbackStatus = true;
++        UPOWER_CheckReqWithArgs(UPWR_SG_EXCEPT, &sgf, &err, &ret, 100);
+         assert(err == UPWR_RESP_OK);
+     }
+ 
+-- 
+2.39.0.windows.2
