@@ -559,8 +559,11 @@ static void APP_keypadPowerTimerCallback(TimerHandle_t xTimer)
 static void APP_powerOffMCoreTimerCallback(TimerHandle_t xTimer)
 {
     volatile uint32_t *bbnsm_ctrl = (void *)(BBNSM_BASE + 0x8);
+    struct board_descr *bdescr = get_board_description();
+
     if (AD_CurrentMode == AD_DPD)
     {
+        BOARD_carrier_enable(bdescr, false);
         PRINTF("Power Off: Press ON/OFF for reboot \r\n");
         vTaskDelay(pdMS_TO_TICKS(1000));
         *bbnsm_ctrl |= (1U << 25);
@@ -594,6 +597,7 @@ static void APP_suspendMCoreTimerCallback(TimerHandle_t xTimer)
 #endif
     xTimerStop(suspendMCoreTimer, portMAX_DELAY);
     LPM_SystemSleep();
+    // LPM_SystemDeepSleep();
 }
 
 void LPTMR1_IRQHandler(void)
