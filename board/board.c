@@ -603,6 +603,19 @@ void BOARD_SetTrdcGlobalConfig(void)
         mbcBlockConfig.memoryBlockIdx            = 31U;  /* MBC0_DOM7_MEM2_BLK_CFG_W31 */
         TRDC_MbcSetMemoryBlockConfig(TRDC, &mbcBlockConfig);
 
+        /* non secure state can access GPIO-A/B/C for cortex-A35 */
+        mbcBlockConfig.memoryAccessControlSelect = TRDC_MBC_ACCESS_CONTROL_POLICY_ALL_INDEX;
+        mbcBlockConfig.nseEnable                 = true; /* non secure state can access the block for cortex-A35 */
+        mbcBlockConfig.mbcIdx                    = 0U;   /* MBC0 */
+        mbcBlockConfig.domainIdx                 = 7U;   /* MBC0_DOM7 */
+        mbcBlockConfig.slaveMemoryIdx            = 3U;   /* MBC0_DOM7_MEM3 */
+        mbcBlockConfig.memoryBlockIdx            = 0U;  /* MBC0_DOM7_MEM3_BLK_CFG_W0 */ /* GPIOA */
+        TRDC_MbcSetMemoryBlockConfig(TRDC, &mbcBlockConfig);
+        mbcBlockConfig.memoryBlockIdx = 1U;             /* MBC0_DOM7_MEM3_BLK_CFG_W1 */ /* GPIOB */
+        TRDC_MbcSetMemoryBlockConfig(TRDC, &mbcBlockConfig);
+        mbcBlockConfig.memoryBlockIdx = 2U;             /* MBC0_DOM7_MEM3_BLK_CFG_W2 */ /* GPIOC */
+        TRDC_MbcSetMemoryBlockConfig(TRDC, &mbcBlockConfig);
+
         /* non secure state can access CGC0: PBrigge0 slot 47 and PCC0 slot 48 for cortex-A35 */
         mbcBlockConfig.memoryAccessControlSelect = TRDC_MBC_ACCESS_CONTROL_POLICY_ALL_INDEX;
         mbcBlockConfig.nseEnable                 = true; /* non secure state can access the block for cortex-A35 */

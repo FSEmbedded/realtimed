@@ -383,7 +383,7 @@ static int init_io_iface(struct io_iface *io_iface, struct dev *io_dev, enum boa
         case GPIOA_BASE:
             io_pins = pvPortMalloc(sizeof(struct io_pin) * GPIOA_NUM);
             if(!io_pins)
-                return -ENOMEM;        
+                return -ENOMEM;
 
             io_iface->num_pins = GPIOA_NUM;
             io_iface->io_pins = io_pins;
@@ -394,7 +394,7 @@ static int init_io_iface(struct io_iface *io_iface, struct dev *io_dev, enum boa
         case GPIOB_BASE:
             io_pins = pvPortMalloc(sizeof(struct io_pin) * GPIOB_NUM);
             if(!io_pins)
-                return -ENOMEM;        
+                return -ENOMEM;
 
             io_iface->num_pins = GPIOB_NUM;
             io_iface->io_pins = io_pins;
@@ -405,7 +405,7 @@ static int init_io_iface(struct io_iface *io_iface, struct dev *io_dev, enum boa
         case GPIOC_BASE:
             io_pins = pvPortMalloc(sizeof(struct io_pin) * GPIOC_NUM);
             if(!io_pins)
-                return -ENOMEM;        
+                return -ENOMEM;
 
             io_iface->num_pins = GPIOC_NUM;
             io_iface->io_pins = io_pins;
