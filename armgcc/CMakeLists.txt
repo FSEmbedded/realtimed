@@ -62,6 +62,7 @@ add_executable(${MCUX_SDK_PROJECT_NAME}
 "${ProjDirPath}/../board/board.c"
 "${ProjDirPath}/../board/board_uart.c"
 "${ProjDirPath}/../board/board_i2c.c"
+"${ProjDirPath}/../board/board_can.c"
 "${ProjDirPath}/../board/board_io.c"
 "${ProjDirPath}/../board/board_sai.c"
 "${ProjDirPath}/../board/board_descr.c"

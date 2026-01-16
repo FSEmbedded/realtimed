@@ -17,393 +17,428 @@ static struct board_descr *gd_board_descr = NULL;
 
 void print_board(enum board_types btype)
 {
-    PRINTF("BOARD: ");
+	PRINTF("BOARD: ");
 
-    switch(btype) {
-        case BT_PICOCOREMX8ULP:
-            PRINTF("PicoCoreMX8ULP\r\n");
-            break;
-        case BT_OSMSFMX8ULP:
-            PRINTF("FS-OSM-SF-MX8ULP\r\n");
-            break;
-        case BT_ARMSTONEMX8ULP:
-            PRINTF("armStoneMX8ULP\r\n");
-            break;
-        case BT_SOLDERCOREMX8ULP:
-            PRINTF("SolderCoreMX8ULP\r\n");
-            break;
-        default:
-            break;
-    }
+	switch(btype) {
+		case BT_PICOCOREMX8ULP:
+			PRINTF("PicoCoreMX8ULP\r\n");
+			break;
+		case BT_OSMSFMX8ULP:
+			PRINTF("FS-OSM-SF-MX8ULP\r\n");
+			break;
+		case BT_ARMSTONEMX8ULP:
+			PRINTF("armStoneMX8ULP\r\n");
+			break;
+		case BT_SOLDERCOREMX8ULP:
+			PRINTF("SolderCoreMX8ULP\r\n");
+			break;
+		default:
+			break;
+	}
 }
 
 static void *BOARD_get_fdt_config(void *addr){
-    return addr + 0x40; // Skip F&S Header
+	return addr + 0x40; // Skip F&S Header
 }
 
 int BOARD_get_type(void)
 {
-    static bool is_fdt_read = false;
-    static enum board_types btype = BT_UNKNOWN;
-    void *fdt = BOARD_get_fdt_config((void *)CFG_FUS_BOARDCFG_ADDR);
-    int offs, len, ret;
-    const void *prop;
+	static bool is_fdt_read = false;
+	static enum board_types btype = BT_UNKNOWN;
+	void *fdt = BOARD_get_fdt_config((void *)CFG_FUS_BOARDCFG_ADDR);
+	int offs, len, ret;
+	const void *prop;
 
-    if(is_fdt_read)
-        return btype;
+	if(is_fdt_read)
+		return btype;
 
-    is_fdt_read = true;
-    offs = fdt_path_offset(fdt, "/board-cfg");
-    if(offs <= 0){
-        PRINTF("ERROR: %s\n", fdt_strerror(offs));
-        return btype;
-    }
+	is_fdt_read = true;
+	offs = fdt_path_offset(fdt, "/board-cfg");
+	if(offs <= 0){
+		PRINTF("ERROR: %s\n", fdt_strerror(offs));
+		return btype;
+	}
 
-    prop = fdt_getprop(fdt, offs, "board-name", &len);
+	prop = fdt_getprop(fdt, offs, "board-name", &len);
 
-    ret = fdt_stringlist_contains(prop, len, "PicoCoreMX8ULP");
-    if(ret == 1){
-        btype = BT_PICOCOREMX8ULP;
-        return btype;
-    }
+	ret = fdt_stringlist_contains(prop, len, "PicoCoreMX8ULP");
+	if(ret == 1){
+		btype = BT_PICOCOREMX8ULP;
+		return btype;
+	}
 
-    ret = fdt_stringlist_contains(prop, len, "FS-OSM-SF-MX8ULP");
-    if(ret == 1){
-        btype = BT_OSMSFMX8ULP;
-        return btype;
-    }
+	ret = fdt_stringlist_contains(prop, len, "FS-OSM-SF-MX8ULP");
+	if(ret == 1){
+		btype = BT_OSMSFMX8ULP;
+		return btype;
+	}
 
-    ret = fdt_stringlist_contains(prop, len, "armStoneMX8ULP");
-    if(ret == 1){
-        btype = BT_ARMSTONEMX8ULP;
-        return btype;
-    }
+	ret = fdt_stringlist_contains(prop, len, "armStoneMX8ULP");
+	if(ret == 1){
+		btype = BT_ARMSTONEMX8ULP;
+		return btype;
+	}
 
-    ret = fdt_stringlist_contains(prop, len, "SolderCoreMX8ULP");
-    if(ret == 1){
-        btype = BT_SOLDERCOREMX8ULP;
-        return btype;
-    }
+	ret = fdt_stringlist_contains(prop, len, "SolderCoreMX8ULP");
+	if(ret == 1){
+		btype = BT_SOLDERCOREMX8ULP;
+		return btype;
+	}
 
-    return btype;
+	return btype;
 }
 
 struct board_descr *get_board_description(void)
 {
-    return gd_board_descr;
+	return gd_board_descr;
 }
 
 static void BOARD_get_features(struct board_descr *bdescr)
 {
-    /* Clear all features */
-    bdescr->bfeatures = 0;
+	/* Clear all features */
+	bdescr->bfeatures = 0;
 
-    void *fdt = BOARD_get_fdt_config((void *)CFG_FUS_BOARDCFG_ADDR);
-    int offs, len;
-    const void *prop;
+	void *fdt = BOARD_get_fdt_config((void *)CFG_FUS_BOARDCFG_ADDR);
+	int offs, len;
+	const void *prop;
 
-    if(fdt_check_header(fdt) != 0){
-        return;
-    }
+	if(fdt_check_header(fdt) != 0){
+		return;
+	}
 
-    offs = fdt_path_offset(fdt, "/board-cfg");
-    if(offs <= 0){
-        return;
-    }
+	offs = fdt_path_offset(fdt, "/board-cfg");
+	if(offs <= 0){
+		return;
+	}
 
-    prop = fdt_getprop(fdt, offs, "have-qspi-psram", &len);
-    if(prop && len == 0){
-        bdescr->bfeatures |= FEAT_QSPI_PSRAM;
-    }
+	prop = fdt_getprop(fdt, offs, "have-qspi-psram", &len);
+	if(prop && len == 0){
+		bdescr->bfeatures |= FEAT_QSPI_PSRAM;
+	}
 
-    prop = fdt_getprop(fdt, offs, "have-qspi-flash", &len);
-    if(prop && len == 0){
-        bdescr->bfeatures |= FEAT_QSPI_FLASH;
-    }
+	prop = fdt_getprop(fdt, offs, "have-qspi-flash", &len);
+	if(prop && len == 0){
+		bdescr->bfeatures |= FEAT_QSPI_FLASH;
+	}
 
-    prop = fdt_getprop(fdt, offs, "have-bluetooth", &len);
-    if(prop && len == 0){
-        bdescr->bfeatures |= FEAT_BLUETOOTH;
-    }
+	prop = fdt_getprop(fdt, offs, "have-bluetooth", &len);
+	if(prop && len == 0){
+		bdescr->bfeatures |= FEAT_BLUETOOTH;
+	}
 
-    prop = fdt_getprop(fdt, offs, "have-i2c-d-rtd", &len);
-    if(prop && len == 0){
-        bdescr->bfeatures |= FEAT_I2C_D_RTD;
-    }
+	prop = fdt_getprop(fdt, offs, "have-i2c-d-rtd", &len);
+	if(prop && len == 0){
+		bdescr->bfeatures |= FEAT_I2C_D_RTD;
+	}
+
+	prop = fdt_getprop(fdt, offs, "have-can-in-apd", &len);
+	if(prop && len == 0){
+		bdescr->bfeatures |= FEAT_CAN_IN_APD;
+	}
 };
 
 int BOARD_InitBoardDescr(enum board_types btype)
 {
-    struct dev tpm_devs[] = {
-        {
-            .base_addr  = TPM0_BASE,
-            .ip_name    = kCLOCK_Tpm0,
-            .ip_src     = kCLOCK_Pcc1BusIpSrcCm33Bus,
-            .instance   = 0,
-            .irq        = TPM0_IRQn,
-            .irqHandler = NULL,
-            .reset      = kRESET_Tpm0,
-        },
-        {
-            .base_addr  = TPM1_BASE,
-            .ip_name    = kCLOCK_Tpm1,
-            .ip_src     = kCLOCK_Pcc1BusIpSrcCm33Bus,
-            .instance   = 1,
-            .irq        = TPM1_IRQn,
-            .irqHandler = NULL,
-            .reset      = kRESET_Tpm1,
-        },
-        {
-            .base_addr  = TPM2_BASE,
-            .ip_name    = kCLOCK_Tpm2,
-            .ip_src     = kCLOCK_Pcc2BusIpSrcFusionDspBus,
-            .instance   = 2,
-            .irq        = TPM2_IRQn,
-            .irqHandler = NULL,
-            .reset      = kRESET_Tpm2,
-        },
-        {
-            .base_addr  = TPM3_BASE,
-            .ip_name    = kCLOCK_Tpm3,
-            .ip_src     = kCLOCK_Pcc2BusIpSrcFusionDspBus,
-            .instance   = 3,
-            .irq        = TPM3_IRQn,
-            .irqHandler = NULL,
-            .reset      = kRESET_Tpm3,
-        }
-    };
+	struct dev tpm_devs[] = {
+		{
+			.base_addr  = TPM0_BASE,
+			.ip_name	= kCLOCK_Tpm0,
+			.ip_src	 = kCLOCK_Pcc1BusIpSrcCm33Bus,
+			.instance   = 0,
+			.irq		= TPM0_IRQn,
+			.irqHandler = NULL,
+			.reset	  = kRESET_Tpm0,
+		},
+		{
+			.base_addr  = TPM1_BASE,
+			.ip_name	= kCLOCK_Tpm1,
+			.ip_src	 = kCLOCK_Pcc1BusIpSrcCm33Bus,
+			.instance   = 1,
+			.irq		= TPM1_IRQn,
+			.irqHandler = NULL,
+			.reset	  = kRESET_Tpm1,
+		},
+		{
+			.base_addr  = TPM2_BASE,
+			.ip_name	= kCLOCK_Tpm2,
+			.ip_src	 = kCLOCK_Pcc2BusIpSrcFusionDspBus,
+			.instance   = 2,
+			.irq		= TPM2_IRQn,
+			.irqHandler = NULL,
+			.reset	  = kRESET_Tpm2,
+		},
+		{
+			.base_addr  = TPM3_BASE,
+			.ip_name	= kCLOCK_Tpm3,
+			.ip_src	 = kCLOCK_Pcc2BusIpSrcFusionDspBus,
+			.instance   = 3,
+			.irq		= TPM3_IRQn,
+			.irqHandler = NULL,
+			.reset	  = kRESET_Tpm3,
+		}
+	};
 
-    struct dev i2c_devs[] = {
-        {
-            .base_addr  = LPI2C0_BASE,
-            .ip_name    = kCLOCK_Lpi2c0,
-            .ip_src     = kCLOCK_Pcc1BusIpSrcCm33Bus,
-            .instance   = 0,
-            .irq        = LPI2C0_IRQn,
-            .irqHandler = NULL,
-            .reset      = kRESET_Lpi2c0,
-        },
-        {
-            .base_addr  = LPI2C1_BASE,
-            .ip_name    = kCLOCK_Lpi2c1,
-            .ip_src     = kCLOCK_Pcc1BusIpSrcCm33Bus,
-            .instance   = 1,
-            .irq        = LPI2C1_IRQn,
-            .irqHandler = NULL,
-            .reset      = kRESET_Lpi2c1,
-        },
-        {
-            .base_addr  = LPI2C2_BASE,
-            .ip_name    = kCLOCK_Lpi2c2,
-            .ip_src     = kCLOCK_Pcc1BusIpSrcCm33Bus,
-            .instance   = 2,
-            .irq        = LPI2C2_IRQn,
-            .irqHandler = NULL,
-            .reset      = kRESET_Lpi2c2,
-        },
-        {
-            .base_addr  = LPI2C3_BASE,
-            .ip_name    = kCLOCK_Lpi2c3,
-            .ip_src     = kCLOCK_Pcc1BusIpSrcCm33Bus,
-            .instance   = 3,
-            .irq        = LPI2C3_IRQn,
-            .irqHandler = NULL,
-            .reset      = kRESET_Lpi2c3,
-        },
-        {
-            .base_addr  = I3C0_BASE,
-            .ip_name    = kCLOCK_I3c0,
-            .ip_src     = kCLOCK_Pcc0BusIpSrcSysOscDiv2,
-            .instance   = 0,
-            .irq        = I3C0_IRQn,
-            .irqHandler = NULL,
-            .reset      = kRESET_I3c0,
-        },
-        {
-            .base_addr  = I3C1_BASE,
-            .ip_name    = kCLOCK_I3c1,
-            .ip_src     = kCLOCK_Pcc0BusIpSrcSysOscDiv2,
-            .instance   = 1,
-            .irq        = I3C1_IRQn,
-            .irqHandler = NULL,
-            .reset      = kRESET_I3c1,
-        }
-    };
+	struct dev i2c_devs[] = {
+		{
+			.base_addr	= LPI2C0_BASE,
+			.ip_name	= kCLOCK_Lpi2c0,
+			.ip_src		= kCLOCK_Pcc1BusIpSrcCm33Bus,
+			.instance	= 0,
+			.irq		= LPI2C0_IRQn,
+			.irqHandler 	= NULL,
+			.reset		= kRESET_Lpi2c0,
+		},
+		{
+			.base_addr	= LPI2C1_BASE,
+			.ip_name	= kCLOCK_Lpi2c1,
+			.ip_src	 	= kCLOCK_Pcc1BusIpSrcCm33Bus,
+			.instance	= 1,
+			.irq		= LPI2C1_IRQn,
+			.irqHandler	= NULL,
+			.reset	  	= kRESET_Lpi2c1,
+		},
+		{
+			.base_addr	= LPI2C2_BASE,
+			.ip_name	= kCLOCK_Lpi2c2,
+			.ip_src	 	= kCLOCK_Pcc1BusIpSrcCm33Bus,
+			.instance	= 2,
+			.irq		= LPI2C2_IRQn,
+			.irqHandler	= NULL,
+			.reset	  	= kRESET_Lpi2c2,
+		},
+		{
+			.base_addr	= LPI2C3_BASE,
+			.ip_name	= kCLOCK_Lpi2c3,
+			.ip_src	 	= kCLOCK_Pcc1BusIpSrcCm33Bus,
+			.instance	= 3,
+			.irq		= LPI2C3_IRQn,
+			.irqHandler	= NULL,
+			.reset	  	= kRESET_Lpi2c3,
+		},
+		{
+			.base_addr	= I3C0_BASE,
+			.ip_name	= kCLOCK_I3c0,
+			.ip_src		= kCLOCK_Pcc0BusIpSrcSysOscDiv2,
+			.instance 	= 0,
+			.irq		= I3C0_IRQn,
+			.irqHandler	= NULL,
+			.reset		= kRESET_I3c0,
+		},
+		{
+			.base_addr	= I3C1_BASE,
+			.ip_name	= kCLOCK_I3c1,
+			.ip_src		= kCLOCK_Pcc0BusIpSrcSysOscDiv2,
+			.instance	= 1,
+			.irq		= I3C1_IRQn,
+			.irqHandler	= NULL,
+			.reset		= kRESET_I3c1,
+		}
+	};
 
-    struct dev sai_devs[] = {
-        {
-            .base_addr  = SAI0_BASE,
-            .ip_name    = kCLOCK_Sai0,
-            .ip_src     = kCLOCK_Cm33SaiClkSrcPll1Pfd2Div,
-            .instance   = 0,
-            .irq        = SAI0_IRQn,
-            .irqHandler = NULL,
-            .reset      = kRESET_Sai0,
-        },
-        {
-            .base_addr  = SAI1_BASE,
-            .ip_name    = kCLOCK_Sai1,
-            .ip_src     = kCLOCK_Cm33SaiClkSrcPll1Pfd2Div,
-            .instance   = 1,
-            .irq        = SAI1_IRQn,
-            .irqHandler = NULL,
-            .reset      = kRESET_Sai1,
-        },
-        {
-            .base_addr  = SAI2_BASE,
-            .ip_name    = kCLOCK_Sai2,
-            .ip_src     = kCLOCK_FusionSaiClkSrcPll1Pfd2Div,
-            .instance   = 2,
-            .irq        = SAI2_IRQn,
-            .irqHandler = NULL,
-            .reset      = kRESET_Sai2,
-        },
-        {
-            .base_addr  = SAI3_BASE,
-            .ip_name    = kCLOCK_Sai3,
-            .ip_src     = kCLOCK_FusionSaiClkSrcPll1Pfd2Div,
-            .instance   = 3,
-            .irq        = SAI3_IRQn,
-            .irqHandler = NULL,
-            .reset      = kRESET_Sai3,
-        }
-    };
+	struct dev sai_devs[] = {
+		{
+			.base_addr	= SAI0_BASE,
+			.ip_name	= kCLOCK_Sai0,
+			.ip_src		= kCLOCK_Cm33SaiClkSrcPll1Pfd2Div,
+			.instance	= 0,
+			.irq		= SAI0_IRQn,
+			.irqHandler	= NULL,
+			.reset		= kRESET_Sai0,
+		},
+		{
+			.base_addr	= SAI1_BASE,
+			.ip_name	= kCLOCK_Sai1,
+			.ip_src		= kCLOCK_Cm33SaiClkSrcPll1Pfd2Div,
+			.instance	= 1,
+			.irq		= SAI1_IRQn,
+			.irqHandler	= NULL,
+			.reset		= kRESET_Sai1,
+		},
+		{
+			.base_addr	= SAI2_BASE,
+			.ip_name	= kCLOCK_Sai2,
+			.ip_src		= kCLOCK_FusionSaiClkSrcPll1Pfd2Div,
+			.instance  	= 2,
+			.irq		= SAI2_IRQn,
+			.irqHandler	= NULL,
+			.reset		= kRESET_Sai2,
+		},
+		{
+			.base_addr	= SAI3_BASE,
+			.ip_name	= kCLOCK_Sai3,
+			.ip_src		= kCLOCK_FusionSaiClkSrcPll1Pfd2Div,
+			.instance 	= 3,
+			.irq		= SAI3_IRQn,
+			.irqHandler	= NULL,
+			.reset		= kRESET_Sai3,
+		}
+	};
 
-    struct dev uart_devs[] = {
-        {
-            .base_addr  = LPUART0_BASE,
-            .ip_name    = kCLOCK_Lpuart0,
-            .ip_src     = kCLOCK_Pcc1BusIpSrcCm33Bus,
-            .instance   = 0,
-            .irq        = 0,
-            .irqHandler = NULL,
-            .reset      = kRESET_Lpuart0,
-        },
-        {
-            .base_addr  = LPUART1_BASE,
-            .ip_name    = kCLOCK_Lpuart1,
-            .ip_src     = kCLOCK_Pcc1BusIpSrcCm33Bus,
-            .instance   = 1,
-            .irq        = 0,
-            .irqHandler = NULL,
-            .reset      = kRESET_Lpuart1,
-        },
-        {
-            .base_addr  = LPUART2_BASE,
-            .ip_name    = kCLOCK_Lpuart2,
-            .ip_src     = kCLOCK_Pcc2BusIpSrcFusionDspBus,
-            .instance   = 2,
-            .irq        = 0,
-            .irqHandler = NULL,
-            .reset      = kRESET_Lpuart2,
-        },
-        {
-            .base_addr  = LPUART3_BASE,
-            .ip_name    = kCLOCK_Lpuart3,
-            .ip_src     = kCLOCK_Pcc2BusIpSrcFusionDspBus,
-            .instance   = 3,
-            .irq        = 0,
-            .irqHandler = NULL,
-            .reset      = kRESET_Lpuart3,
-        },
-    };
+	struct dev uart_devs[] = {
+		{
+			.base_addr	= LPUART0_BASE,
+			.ip_name	= kCLOCK_Lpuart0,
+			.ip_src		= kCLOCK_Pcc1BusIpSrcCm33Bus,
+			.instance 	= 0,
+			.irq		= 0,
+			.irqHandler	= NULL,
+			.reset		= kRESET_Lpuart0,
+		},
+		{
+			.base_addr	= LPUART1_BASE,
+			.ip_name	= kCLOCK_Lpuart1,
+			.ip_src		= kCLOCK_Pcc1BusIpSrcCm33Bus,
+			.instance  	= 1,
+			.irq		= 0,
+			.irqHandler 	= NULL,
+			.reset		= kRESET_Lpuart1,
+		},
+		{
+			.base_addr  	= LPUART2_BASE,
+			.ip_name	= kCLOCK_Lpuart2,
+			.ip_src		= kCLOCK_Pcc2BusIpSrcFusionDspBus,
+			.instance  	= 2,
+			.irq		= 0,
+			.irqHandler	= NULL,
+			.reset		= kRESET_Lpuart2,
+		},
+		{
+			.base_addr	= LPUART3_BASE,
+			.ip_name	= kCLOCK_Lpuart3,
+			.ip_src		= kCLOCK_Pcc2BusIpSrcFusionDspBus,
+			.instance	= 3,
+			.irq		= 0,
+			.irqHandler	= NULL,
+			.reset		= kRESET_Lpuart3,
+		},
+	};
 
-    struct dev io_devs[] = {
-        {
-            .base_addr  = GPIOA_BASE,
-            .ip_name    = kCLOCK_RgpioA,
-            .ip_src     = 0,
-            .instance   = 0,
-            .irq        = 0,
-            .irqHandler = NULL,
-            .reset      = 0,
-        },
-        {
-            .base_addr  = GPIOB_BASE,
-            .ip_name    = kCLOCK_RgpioB,
-            .ip_src     = 0,
-            .instance   = 1,
-            .irq        = 0,
-            .irqHandler = NULL,
-            .reset      = 0,
-        },
-        {
-            .base_addr  = GPIOC_BASE,
-            .ip_name    = kCLOCK_RgpioC,
-            .ip_src     = 0,
-            .instance   = 2,
-            .irq        = 0,
-            .irqHandler = NULL,
-            .reset      = 0,
-        },
-    };
+	struct dev io_devs[] = {
+		{
+			.base_addr	= GPIOA_BASE,
+			.ip_name	= kCLOCK_RgpioA,
+			.ip_src		= 0,
+			.instance	= 0,
+			.irq		= 0,
+			.irqHandler	= NULL,
+			.reset		= 0,
+		},
+		{
+			.base_addr	= GPIOB_BASE,
+			.ip_name	= kCLOCK_RgpioB,
+			.ip_src		= 0,
+			.instance 	= 1,
+			.irq		= 0,
+			.irqHandler	= NULL,
+			.reset		= 0,
+		},
+		{
+			.base_addr	= GPIOC_BASE,
+			.ip_name	= kCLOCK_RgpioC,
+			.ip_src		= 0,
+			.instance 	= 2,
+			.irq		= 0,
+			.irqHandler	= NULL,
+			.reset	  	= 0,
+		},
+	};
 
-    struct board_descr *bdescr = NULL;
-    int ret;
+	struct dev can_devs[] = {
+		{
+			.base_addr	= CAN0_BASE,
+			.ip_name	= kCLOCK_Flexcan,
+			.ip_src		= kCLOCK_Pcc1BusIpSrcSysOscDiv2,
+			.instance	= 0,
+			.irq		= FlexCAN_IRQn,
+			.irqHandler	= NULL,
+			.reset 		= kRESET_Flexcan,
+		},
+	};
 
-    bdescr = pvPortMalloc(sizeof(struct board_descr));
-    if(!bdescr)
-    return -ENOMEM;
+	struct board_descr *bdescr = NULL;
+	int ret;
 
-    memset(bdescr, 0, sizeof(struct board_descr));
-    bdescr->btype = btype;
+	bdescr = pvPortMalloc(sizeof(struct board_descr));
+	if(!bdescr)
+		return -ENOMEM;
 
-    BOARD_get_features(bdescr);
+	memset(bdescr, 0, sizeof(struct board_descr));
+	bdescr->btype = btype;
 
-    ret = init_dbg_info(&bdescr->dbg_info, uart_devs, bdescr);
-    if(ret)
-        return ret;
+	BOARD_get_features(bdescr);
 
-    ret = init_uart_adapter(&bdescr->uart_adapter, uart_devs, bdescr);
-    if(ret)
-        return ret;
+	ret = init_dbg_info(&bdescr->dbg_info, uart_devs, bdescr);
+	if(ret)
+		return ret;
 
-    ret = init_i2c_adapter(&bdescr->i2c_adapter, i2c_devs, bdescr);
-    if(ret)
-        return ret;
+	ret = init_uart_adapter(&bdescr->uart_adapter, uart_devs, bdescr);
+	if(ret)
+		return ret;
 
-    ret = init_pwm_adapter(&bdescr->pwm_adapter, tpm_devs, btype);
-    if(ret)
-        return ret;
+	ret = init_i2c_adapter(&bdescr->i2c_adapter, i2c_devs, bdescr);
+	if(ret)
+		return ret;
 
-    ret = init_io_adapter(&bdescr->io_adapter, io_devs, btype);
-    if(ret)
-        return ret;
+	ret = init_pwm_adapter(&bdescr->pwm_adapter, tpm_devs, btype);
+	if(ret)
+		return ret;
 
-    ret = init_sai_edma_adapter(&bdescr->sai_adapter, sai_devs, btype);
-    if(ret)
-        return ret;
+	ret = init_io_adapter(&bdescr->io_adapter, io_devs, btype);
+	if(ret)
+		return ret;
 
-    gd_board_descr = bdescr;
+	ret = init_sai_edma_adapter(&bdescr->sai_adapter, sai_devs, btype);
+	if(ret)
+		return ret;
 
-    return 0;
+	ret = init_can_adapter(&bdescr->can_adapter, can_devs, bdescr);
+	if(ret)
+		return ret;
+
+	gd_board_descr = bdescr;
+
+	return 0;
 }
 
 void BOARD_InitPeripherie(struct board_descr *bdescr)
 {
-    struct dbg_info *dbg_info = &bdescr->dbg_info;
+	struct dbg_info *dbg_info = &bdescr->dbg_info;
+	struct can_adapter *can_adapter = &bdescr->can_adapter;
+	CLOCK_EnableClock(kCLOCK_Dma0Ch0);
+	CLOCK_EnableClock(kCLOCK_Dma0Ch16);
+	CLOCK_EnableClock(kCLOCK_Dma0Ch17);
+	CLOCK_EnableClock(kCLOCK_Wuu0);
+	CLOCK_EnableClock(kCLOCK_Bbnsm);
 
-    CLOCK_EnableClock(kCLOCK_Dma0Ch0);
-    CLOCK_EnableClock(kCLOCK_Dma0Ch16);
-    CLOCK_EnableClock(kCLOCK_Dma0Ch17);
-    CLOCK_EnableClock(kCLOCK_Wuu0);
-    CLOCK_EnableClock(kCLOCK_Bbnsm);
+	BOARD_carrier_enable(bdescr, true);
+	BOARD_InitDebugConsole(dbg_info);
 
-    BOARD_carrier_enable(bdescr, true);
-    BOARD_InitDebugConsole(dbg_info);
+	/* Initialize CAN buses for Linux */
+	for (uint8_t busID = 0; busID < can_adapter->num_buses; busID++)
+	{
+		struct can_bus *can_bus;
+
+		can_bus = can_adapter->ops.get_bus_from_idx(can_adapter,
+								 busID);
+		if (can_bus) {
+			can_adapter->ops.init(can_bus);
+			CLOCK_EnableClock(can_bus->dev.ip_name);
+			DisableIRQ(can_bus->dev.irq);
+		}
+	}
 }
 
 void BOARD_carrier_enable(struct board_descr *bdescr, bool enable)
 {
-    enum board_types btype = bdescr->btype;
-    struct io_adapter *io_adapter = &bdescr->io_adapter;
+	enum board_types btype = bdescr->btype;
+	struct io_adapter *io_adapter = &bdescr->io_adapter;
 
-    switch(btype){
-        case BT_OSMSFMX8ULP:
-        case BT_ARMSTONEMX8ULP:
-            io_adapter->ops.set_output(io_adapter, CONFIG_GPIOA_IFACEID, GPIOA_CARRIER_PWR_EN, enable ? IO_ValueHigh : IO_ValueLow);
-            break;
-        default:
-            break;
-    }
+	switch(btype){
+		case BT_OSMSFMX8ULP:
+		case BT_ARMSTONEMX8ULP:
+			io_adapter->ops.set_output(io_adapter, CONFIG_GPIOA_IFACEID, GPIOA_CARRIER_PWR_EN, enable ? IO_ValueHigh : IO_ValueLow);
+			break;
+		default:
+			break;
+	}
 }

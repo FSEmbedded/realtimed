@@ -18,6 +18,7 @@
 #include <board/board_io.h>
 #include <board/board_pwm.h>
 #include <board/board_sai.h>
+#include <board/board_can.h>
 #include <board/board_descr.h>
 
 #include "clock_config.h"
