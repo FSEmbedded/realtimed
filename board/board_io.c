@@ -502,5 +502,5 @@ status_t IO_unregisterIRQCallback(struct io_adapter *io_adapter, uint8_t ifaceID
 
     io_iface->irqPinHandler = NULL;
 
-    return kStatus_Success;   
+    return kStatus_Success;
 }

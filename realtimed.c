@@ -25,6 +25,28 @@ void initTask(void *pvParameters)
     struct board_descr *bdescr = NULL;
     enum board_types btype = BT_UNKNOWN;
     int ret;
+    volatile uint32_t *gpio_base;
+
+    /**
+     * U-Boot need GPIO-CLK before handshake
+     */
+    CLOCK_EnableClock(kCLOCK_RgpioA);
+    CLOCK_EnableClock(kCLOCK_RgpioB);
+    CLOCK_EnableClock(kCLOCK_RgpioC);
+
+    /* Allow GPIO-IP NonSec access for Cortex-A */
+    gpio_base = (uint32_t *)((uint32_t)GPIOA_BASE + 0x10U);
+    *gpio_base = 0xffffffff;
+    gpio_base = (uint32_t *)((uint32_t)GPIOA_BASE + 0x18U);
+    *gpio_base = 0xffffffff;
+    gpio_base = (uint32_t *)((uint32_t)GPIOB_BASE + 0x10U);
+    *gpio_base = 0x0000ffff;
+    gpio_base = (uint32_t *)((uint32_t)GPIOB_BASE + 0x18U);
+    *gpio_base = 0x0000ffff;
+    gpio_base = (uint32_t *)((uint32_t)GPIOC_BASE + 0x10U);
+    *gpio_base = 0x00ffffff;
+    gpio_base = (uint32_t *)((uint32_t)GPIOC_BASE + 0x18U);
+    *gpio_base = 0x00ffffff;
 
    /**
     * Wait for A35-UBOOT become ready
