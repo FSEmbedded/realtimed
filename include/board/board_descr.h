@@ -18,6 +18,7 @@ struct board_descr {
     struct io_adapter io_adapter;
     struct pwm_adapter pwm_adapter;
     struct sai_adapter sai_adapter;
+    struct spi_adapter spi_adapter;
 };
 
 /**

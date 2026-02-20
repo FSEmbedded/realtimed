@@ -86,6 +86,29 @@ static void BOARD_InitLpuartArmStone(void)
 #endif /* CONFIG_BOARD_ARMSTONEMX8ULP */
 
 #ifdef CONFIG_BOARD_PICOCOREMX8ULP
+static void BOARD_InitSpiPCore(void)
+{
+	/* SPI */
+	IOMUXC_SetPinMux(IOMUXC_PTA4_LPSPI0_SIN, 0U);
+	IOMUXC_SetPinConfig(IOMUXC_PTA4_LPSPI0_SIN,
+		IOMUXC_PCR_DSE_MASK |
+		IOMUXC_PCR_PE_MASK);
+	IOMUXC_SetPinMux(IOMUXC_PTA5_LPSPI0_SOUT, 0U);
+	IOMUXC_SetPinConfig(IOMUXC_PTA5_LPSPI0_SOUT,
+		IOMUXC_PCR_DSE_MASK |
+		IOMUXC_PCR_PE_MASK);
+	IOMUXC_SetPinMux(IOMUXC_PTA6_LPSPI0_SCK, 0U);
+	IOMUXC_SetPinConfig(IOMUXC_PTA6_LPSPI0_SCK,
+		IOMUXC_PCR_DSE_MASK |
+		IOMUXC_PCR_PE_MASK);
+	IOMUXC_SetPinMux(IOMUXC_PTA7_LPSPI0_PCS0, 0U);
+	IOMUXC_SetPinConfig(IOMUXC_PTA7_LPSPI0_PCS0,
+		IOMUXC_PCR_DSE_MASK |
+		IOMUXC_PCR_PE_MASK);
+}
+#endif /* CONFIG_BOARD_PICOCOREMX8ULP */
+
+#ifdef CONFIG_BOARD_PICOCOREMX8ULP
 static void BOARD_InitLpuartPCore(void)
 {
 	/* UART-B*/
@@ -200,6 +223,18 @@ static void BOARD_InitI2cPCore(void)
 		IOMUXC_PCR_SRE_MASK);
 }
 #endif /* CONFIG_BOARD_PICOCOREMX8ULP */
+
+static void BOARD_InitSpiPins(enum board_types btype) {
+	switch(btype) {
+#ifdef CONFIG_BOARD_PICOCOREMX8ULP
+		case BT_PICOCOREMX8ULP:
+			BOARD_InitSpiPCore();
+			break;
+#endif /* CONFIG_BOARD_PICOCOREMX8ULP */
+		default:
+			break;
+	}
+}
 
 static void BOARD_InitI2cPins(enum board_types btype) {
 	switch(btype) {
@@ -651,5 +686,6 @@ void BOARD_InitBootPins(enum board_types btype)
 	BOARD_InitI2sPins(btype);
 	BOARD_InitTpmPins(btype);
 	BOARD_InitIOPins(btype);
+	BOARD_InitSpiPins(btype);
 	BOARD_InitFLEXSPIPins(btype);
 }

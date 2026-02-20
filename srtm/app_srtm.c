@@ -37,6 +37,7 @@
 #include <srtm/srtm_sai_edma_adapter.h>
 #include <board/board_sai.h>
 #include <srtm/srtm_uart_service.h>
+#include <srtm/srtm_spi_service.h>
 
 void APP_SRTM_WakeupCA35(void);
 
@@ -87,6 +88,7 @@ static int64_t apd_boot_cnt = 0; /* it's cold boot when apd_boot_cnt(Application
 
 static bool support_dsl_for_apd = false; /* true: support deep sleep mode; false: not support deep sleep mode */
 static struct _srtm_uart_adapter uartAdapter;
+static struct _srtm_spi_adapter spi_adapter;
 static srtm_sai_adapter_t saiAdapter;
 static srtm_service_t audioService;
 
@@ -563,6 +565,10 @@ static void APP_SRTM_Linkup(void)
     SRTM_PeerCore_AddChannel(core, chan);
 
     rpmsgConfig.epName = APP_SRTM_UART_CHANNEL_NAME;
+    chan               = SRTM_RPMsgEndpoint_Create(&rpmsgConfig);
+    SRTM_PeerCore_AddChannel(core, chan);
+
+    rpmsgConfig.epName = APP_SRTM_SPI_CHANNEL_NAME;
     chan               = SRTM_RPMsgEndpoint_Create(&rpmsgConfig);
     SRTM_PeerCore_AddChannel(core, chan);
 
@@ -1350,6 +1356,29 @@ static void APP_SRTM_InitUartService(struct board_descr *bdescr)
     SRTM_Dispatcher_RegisterService(disp, uartAdapter.service);
 }
 
+static void APP_SRTM_InitSpiService(struct board_descr *bdescr)
+{
+    srtm_status_t status;
+    PRINTF("APP_SRTM: Start %s\r\n", __func__);
+    spi_adapter.spi_adapter = &bdescr->spi_adapter;
+
+    for (int i = 0; i < spi_adapter.spi_adapter->num_iface; i++) {
+        spi_adapter.spi_adapter->ops.init(spi_adapter.spi_adapter, &spi_adapter.spi_adapter->spi_iface[i]);
+    }
+
+    SRTM_SpiService_Create(&spi_adapter);
+    if (spi_adapter.service == NULL) {
+        PRINTF("APP_SRTM: Failed to create SPI service\r\n");
+        return;
+    }
+
+    status = SRTM_Dispatcher_RegisterService(disp, spi_adapter.service);
+    PRINTF("SRTM Dispatcher gestartet!\r\n");
+    if (status != SRTM_Status_Success) {
+        PRINTF("APP_SRTM: Failed to register SPI service (status=%d)\r\n", status);
+    }
+}
+
 static void APP_SRTM_InitServices(struct board_descr *bdescr)
 {
     APP_SRTM_InitI2CService(bdescr);
@@ -1358,6 +1387,7 @@ static void APP_SRTM_InitServices(struct board_descr *bdescr)
     APP_SRTM_InitPwmService(bdescr);
     APP_SRTM_InitAudioService(bdescr);
     APP_SRTM_InitUartService(bdescr);
+    APP_SRTM_InitSpiService(bdescr);
 }
 
 void APP_PowerOffCA35(void)

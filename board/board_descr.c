@@ -299,6 +299,27 @@ int BOARD_InitBoardDescr(enum board_types btype)
         },
     };
 
+    struct dev spi_devs[] = {
+        {
+            .base_addr  = LPSPI0_BASE,
+            .ip_name    = kCLOCK_Lpspi0,
+            .ip_src     = kCLOCK_Pcc0BusIpSrcCm33Bus,
+            .instance   = 0,
+            .irq        = LPSPI0_IRQn,
+            .irqHandler = NULL,
+            .reset      = kRESET_Lpspi0,
+        },
+        {
+            .base_addr  = LPSPI1_BASE,
+            .ip_name    = kCLOCK_Lpspi1,
+            .ip_src     = kCLOCK_Pcc0BusIpSrcCm33Bus,
+            .instance   = 1,
+            .irq        = LPSPI1_IRQn,
+            .irqHandler = NULL,
+            .reset      = kRESET_Lpspi1,
+        }
+    };
+
     struct board_descr *bdescr = NULL;
     int ret;
 
@@ -331,6 +352,10 @@ int BOARD_InitBoardDescr(enum board_types btype)
         return ret;
 
     ret = init_sai_edma_adapter(&bdescr->sai_adapter, sai_devs, btype);
+    if(ret)
+        return ret;
+
+    ret = init_spi_adapter(&bdescr->spi_adapter, spi_devs, btype);
     if(ret)
         return ret;
 
