@@ -432,12 +432,24 @@ void BOARD_carrier_enable(struct board_descr *bdescr, bool enable)
 {
 	enum board_types btype = bdescr->btype;
 	struct io_adapter *io_adapter = &bdescr->io_adapter;
+	struct io_iface *iface;
 
 	switch(btype){
 		case BT_OSMSFMX8ULP:
-		case BT_ARMSTONEMX8ULP:
+			iface = io_adapter->ops.get_iface_from_idx(io_adapter, CONFIG_GPIOA_IFACEID);
+			if (!iface)
+				return;
+
+			io_adapter->ops.init_iface(io_adapter, iface);
 			io_adapter->ops.set_output(io_adapter, CONFIG_GPIOA_IFACEID, GPIOA_CARRIER_PWR_EN, enable ? IO_ValueHigh : IO_ValueLow);
 			break;
+		case BT_ARMSTONEMX8ULP:
+			iface = io_adapter->ops.get_iface_from_idx(io_adapter, CONFIG_GPIOB_IFACEID);
+			if (!iface)
+				return;
+
+			io_adapter->ops.init_iface(io_adapter, iface);
+			io_adapter->ops.set_output(io_adapter, CONFIG_GPIOB_IFACEID, GPIOB_CARRIER_PWR_EN, enable ? IO_ValueHigh : IO_ValueLow);
 		default:
 			break;
 	}

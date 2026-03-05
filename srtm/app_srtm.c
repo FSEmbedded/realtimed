@@ -1211,6 +1211,23 @@ static void APP_SRTM_OSM_InitIOSevice(struct board_descr *bdescr)
 }
 #endif /* CONFIG_BOARD_OSMSFMX8ULP */
 
+#ifdef CONFIG_BOARD_ARMSTONEMX8ULP
+static void APP_SRTM_armStone_InitIOSevice(struct board_descr *bdescr)
+{
+    struct io_adapter *io_adapter = &bdescr->io_adapter;
+    /* Register Pins */
+    SRTM_IoService_RegisterPin(srtm_io_adapter.service, CONFIG_GPIOB_IFACEID, ASTONE_GPIOB_CARRIER_PWR_EN, NULL);
+    SRTM_IoService_RegisterPin(srtm_io_adapter.service, CONFIG_GPIOC_IFACEID, ASTONE_GPIOC_WLAN_BT_EN, NULL);
+    SRTM_IoService_RegisterPin(srtm_io_adapter.service, CONFIG_GPIOC_IFACEID, ASTONE_GPIOC_BT_WAKE_HOST, NULL);
+    SRTM_IoService_RegisterPin(srtm_io_adapter.service, CONFIG_GPIOC_IFACEID, ASTONE_GPIOC_WM8904_IRQ, NULL);
+
+    /* Register IRQHandler */
+    IO_RegisterIRQCallback(io_adapter, CONFIG_GPIOA_IFACEID, &APP_SRTM_IO_ISR);
+    IO_RegisterIRQCallback(io_adapter, CONFIG_GPIOB_IFACEID, &APP_SRTM_IO_ISR);
+    IO_RegisterIRQCallback(io_adapter, CONFIG_GPIOC_IFACEID, &APP_SRTM_IO_ISR);
+}
+#endif /* CONFIG_BOARD_ARMSTONEMX8ULP */
+
 static void APP_SRTM_InitIOService(struct board_descr *bdescr)
 {
     enum board_types btype = bdescr->btype;
@@ -1240,8 +1257,7 @@ static void APP_SRTM_InitIOService(struct board_descr *bdescr)
 #endif /* CONFIG_BOARD_OSMSFMX8ULP */
 #ifdef CONFIG_BOARD_ARMSTONEMX8ULP
         case BT_ARMSTONEMX8ULP:
-            // TODO:
-            // APP_SRTM_armStone_InitIOSevice(bdescr);
+            APP_SRTM_armStone_InitIOSevice(bdescr);
             break;
 #endif /* CONFIG_BOARD_ARMSTONEMX8ULP */
 

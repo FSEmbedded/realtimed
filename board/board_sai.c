@@ -40,6 +40,7 @@ int init_sai_edma_adapter(struct sai_adapter *sai_adapter, struct dev *sai_devs,
 #endif
 #ifdef CONFIG_BOARD_OSMSFMX8ULP
         case BT_OSMSFMX8ULP:
+        case BT_ARMSTONEMX8ULP:
             sai_chip = pvPortMalloc(sizeof(struct sai_chip));
             if (!sai_chip )
                 return -ENOMEM;
