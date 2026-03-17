@@ -416,9 +416,9 @@ int BOARD_InitBoardDescr(enum board_types btype)
 	if(ret)
 		return ret;
 
-    ret = init_spi_adapter(&bdescr->spi_adapter, spi_devs, btype);
-    if(ret)
-        return ret;
+	ret = init_spi_adapter(&bdescr->spi_adapter, spi_devs, btype);
+	if(ret)
+		return ret;
 
 	gd_board_descr = bdescr;
 

@@ -115,46 +115,57 @@ static int __init_spi_iface(struct spi_iface *spi_iface, struct dev *spi_dev, ui
 
 int init_spi_adapter(struct spi_adapter *spi_adapter, struct dev *spi_devs, enum board_types btype)
 {
-    struct spi_iface *ispiface;
-    uint32_t num_iface = 0;
     int ret = 0;
 
     switch(btype){
 #ifdef CONFIG_BOARD_PICOCOREMX8ULP
         case BT_PICOCOREMX8ULP:
-            ispiface = pvPortMalloc(sizeof(struct spi_iface));
-            if(!ispiface)
+            spi_adapter->spi_iface = pvPortMalloc(sizeof(struct spi_iface));
+            if(!spi_adapter->spi_iface)
                 return -ENOMEM;
 
-            ret = __init_spi_iface(&ispiface[0], &spi_devs[0], 0);
+            ret = __init_spi_iface(&spi_adapter->spi_iface[0], &spi_devs[0], 1);
             if(ret){
-                vPortFree(ispiface);
+                vPortFree(spi_adapter->spi_iface);
                 return ret;
             }
-            num_iface = 1;
+            spi_adapter->num_iface = 1;
             break;
 #endif /* CONFIG_BOARD_OSMSFMX8ULP */
 #ifdef CONFIG_BOARD_ARMSTONEMX8ULP
         case BT_ARMSTONEMX8ULP:
-            ispiface = pvPortMalloc(sizeof(struct spi_iface));
-            if(!ispiface)
+            spi_adapter->spi_iface = pvPortMalloc(sizeof(struct spi_iface));
+            if(!spi_adapter->spi_iface)
                 return -ENOMEM;
 
-            ret = __init_spi_iface(&ispiface[0], &spi_devs[0], 0);
+            ret = __init_spi_iface(&spi_adapter->spi_iface[0], &spi_devs[0], 1);
             if(ret){
-                vPortFree(ispiface);
+                vPortFree(spi_adapter->spi_iface);
                 return ret;
             }
 
-            num_iface = 1;
+            spi_adapter->num_iface = 1;
             break;
 #endif /* CONFIG_BOARD_ARMSTONEMX8ULP */
+#ifdef CONFIG_BOARD_OSMSFMX8ULP
+        case BT_OSMSFMX8ULP:
+            spi_adapter->spi_iface = pvPortMalloc(sizeof(struct spi_iface));
+            if(!spi_adapter->spi_iface)
+                return -ENOMEM;
+
+            ret = __init_spi_iface(&spi_adapter->spi_iface[0], &spi_devs[0], 1);
+            if(ret){
+                vPortFree(spi_adapter->spi_iface);
+                return ret;
+            }
+
+            spi_adapter->num_iface = 1;
+            break;
+#endif /* CONFIG_BOARD_OSMSFMX8ULP */
         default:
             return -EINVAL;
     }
 
-    spi_adapter->num_iface = num_iface;
-    spi_adapter->spi_iface = ispiface;
     spi_adapter->ops.get_iface_from_idx = &get_iface_from_idx;
     spi_adapter->ops.init = &BOARD_LPSPI_Init;
     spi_adapter->ops.deinit = &BOARD_LPSPI_Deinit;
@@ -162,4 +173,3 @@ int init_spi_adapter(struct spi_adapter *spi_adapter, struct dev *spi_devs, enum
 
     return 0;
 }
-
