@@ -12,25 +12,27 @@
 
 struct board_descr {
     enum board_types btype;
+    uint32_t bfeatures;
     struct dbg_info dbg_info;
     struct uart_adapter uart_adapter;
     struct i2c_adapter i2c_adapter;
     struct io_adapter io_adapter;
     struct pwm_adapter pwm_adapter;
     struct sai_adapter sai_adapter;
+    struct can_adapter can_adapter;
     struct spi_adapter spi_adapter;
 };
 
 /**
  * @brief read BOARD-CFG to determine board-type
- * 
+ *
  * @return board_types
  */
 int BOARD_get_type(void);
 
 /**
  * @brief get ptr to board_descr
- * 
+ *
  * @return ptr to board_descr
  */
 struct board_descr *get_board_description(void);
@@ -38,7 +40,7 @@ struct board_descr *get_board_description(void);
 /**
  * @brief initialise Board-Description
  * @param btype: Board Type
- * 
+ *
  * @return 0 or -ERRNO
  */
 int BOARD_InitBoardDescr(enum board_types btype);
@@ -46,7 +48,7 @@ int BOARD_InitBoardDescr(enum board_types btype);
 /**
  * @brief init clock of Peripherie,
  * that is not handled by adapter descriptions
- * 
+ *
  * @param bdescr: ptr to board description
  */
 void BOARD_InitPeripherie(struct board_descr *bdescr);
@@ -55,8 +57,9 @@ void BOARD_InitPeripherie(struct board_descr *bdescr);
  * @brief set GPIO for CARRIER_PWR_EN according to OSM Spec.
  *
  * @param bdescr: Board Description
+ * @param enable: enable carrier power
  */
-void BOARD_carrier_enable(struct board_descr *bdescr);
+void BOARD_carrier_enable(struct board_descr *bdescr, bool enable);
 
 void print_board(enum board_types btype);
 

@@ -12,12 +12,14 @@
 #define _BOARD_H_
 
 #include <board/board_config.h>
+#include <board/board_features.h>
 #include <board/board_uart.h>
 #include <board/board_i2c.h>
 #include <board/board_io.h>
 #include <board/board_pwm.h>
 #include <board/board_spi.h>
 #include <board/board_sai.h>
+#include <board/board_can.h>
 #include <board/board_descr.h>
 
 #include "clock_config.h"

@@ -7,7 +7,7 @@ SET (MCUXPRESSO_CMAKE_FORMAT_MAJOR_VERSION 2)
 SET (MCUXPRESSO_CMAKE_FORMAT_MINOR_VERSION 0)
 
 #APP VERSION
-SET(RDAEMON_VERSION "0.3.1")
+SET(RDAEMON_VERSION "0.3.5")
 
 include(ide_overrides.cmake OPTIONAL)
 
@@ -47,7 +47,7 @@ include(${ProjDirPath}/flags.cmake)
 
 include(${ProjDirPath}/config.cmake)
 
-add_executable(${MCUX_SDK_PROJECT_NAME} 
+add_executable(${MCUX_SDK_PROJECT_NAME}
 "${ProjDirPath}/../board/board_pwm.c"
 "${ProjDirPath}/../srtm/services/srtm_pwm_service.c"
 "${ProjDirPath}/../FreeRTOSConfig.h"
@@ -62,6 +62,7 @@ add_executable(${MCUX_SDK_PROJECT_NAME}
 "${ProjDirPath}/../board/board.c"
 "${ProjDirPath}/../board/board_uart.c"
 "${ProjDirPath}/../board/board_i2c.c"
+"${ProjDirPath}/../board/board_can.c"
 "${ProjDirPath}/../board/board_io.c"
 "${ProjDirPath}/../board/board_sai.c"
 "${ProjDirPath}/../board/board_spi.c"
@@ -86,6 +87,8 @@ add_executable(${MCUX_SDK_PROJECT_NAME}
 "${ProjDirPath}/../srtm/services/srtm_sai_edma_adapter.c"
 "${ProjDirPath}/../srtm/services/srtm_uart_service.c"
 "${ProjDirPath}/../srtm/services/srtm_spi_service.c"
+"${ProjDirPath}/../srtm/services/srtm_keypad_service.c"
+"${ProjDirPath}/../lpm.c"
 )
 
 target_include_directories(${MCUX_SDK_PROJECT_NAME} PRIVATE
@@ -97,9 +100,9 @@ set_source_files_properties("${ProjDirPath}/../FreeRTOSConfig.h" PROPERTIES COMP
 
 include(${SdkRootDirPath}/core/devices/MIMX8UD7/all_lib_device.cmake)
 
-IF(NOT DEFINED TARGET_LINK_SYSTEM_LIBRARIES)  
-    SET(TARGET_LINK_SYSTEM_LIBRARIES "-lm -lc -lgcc -lnosys")  
-ENDIF()  
+IF(NOT DEFINED TARGET_LINK_SYSTEM_LIBRARIES)
+    SET(TARGET_LINK_SYSTEM_LIBRARIES "-lm -lc -lgcc -lnosys")
+ENDIF()
 
 TARGET_LINK_LIBRARIES(${MCUX_SDK_PROJECT_NAME} PRIVATE -Wl,--start-group)
 

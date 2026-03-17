@@ -34,12 +34,12 @@ void initTask(void *pvParameters)
 
     /* Board-Specific Settings */
     btype = BOARD_get_type();
-    BOARD_InitBootPins(btype);
     ret = BOARD_InitBoardDescr(btype);
     if(ret)
         while (1);
 
     bdescr = get_board_description();
+    BOARD_InitBootPins(bdescr);
     BOARD_InitPeripherie(bdescr);
 
     PRINTF("\r\n############  F&S realtime DAEMON ############\n\r\n");
@@ -80,10 +80,10 @@ int main(void)
     BOARD_ConfigMPU();
     BOARD_InitBootPins_pre();
     BOARD_BootClockRUN();
-    
+
     UPOWER_PowerOnMemPart(0U, (uint32_t)kUPOWER_MP1_DMA0);
     UPOWER_ReduceBuck23VoltInSTBY();
- 
+
     Fusion_Init();
 
     /* RTD take LPAV master ownership to prevent APD putting DDR into retention when suspended */

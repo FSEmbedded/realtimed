@@ -643,6 +643,23 @@ void BOARD_SetTrdcGlobalConfig(void)
         mbcBlockConfig.memoryBlockIdx            = 33U;  /* MBC2_DOM7_MEM1_BLK_CFG_W33 */
         TRDC_MbcSetMemoryBlockConfig(TRDC, &mbcBlockConfig);
 
+        /* non secure state can access FLEXCAN: PBridge1 slot 40-43 for cortex-A35 */
+        mbcBlockConfig.memoryAccessControlSelect = TRDC_MBC_ACCESS_CONTROL_POLICY_ALL_INDEX;
+        mbcBlockConfig.nseEnable                 = true; /* non secure state can access the block for cortex-A35 */
+        mbcBlockConfig.mbcIdx                    = 2U;   /* MBC2 */
+        mbcBlockConfig.domainIdx                 = 7U;   /* MBC2_DOM7 */
+        mbcBlockConfig.slaveMemoryIdx            = 1U;   /* MBC2_DOM7_MEM1 */
+        mbcBlockConfig.memoryBlockIdx            = 40U;  /* MBC2_DOM7_MEM1_BLK_CFG_W40 */
+        TRDC_MbcSetMemoryBlockConfig(TRDC, &mbcBlockConfig);
+        mbcBlockConfig.memoryBlockIdx            = 40U;  /* MBC2_DOM7_MEM1_BLK_CFG_W40 */
+        TRDC_MbcSetMemoryBlockConfig(TRDC, &mbcBlockConfig);
+        mbcBlockConfig.memoryBlockIdx            = 41U;  /* MBC2_DOM7_MEM1_BLK_CFG_W41 */
+        TRDC_MbcSetMemoryBlockConfig(TRDC, &mbcBlockConfig);
+        mbcBlockConfig.memoryBlockIdx            = 42U;  /* MBC2_DOM7_MEM1_BLK_CFG_W42 */
+        TRDC_MbcSetMemoryBlockConfig(TRDC, &mbcBlockConfig);
+        mbcBlockConfig.memoryBlockIdx            = 43U;  /* MBC2_DOM7_MEM1_BLK_CFG_W43 */
+        TRDC_MbcSetMemoryBlockConfig(TRDC, &mbcBlockConfig);
+
         /* non secure state can access flexspi0(PBridge0 slot 57 of T-MBC2, also need setup T-MRC0) for cortex-A35 */
         mbcBlockConfig.memoryAccessControlSelect = TRDC_MBC_ACCESS_CONTROL_POLICY_ALL_INDEX;
         mbcBlockConfig.nseEnable                 = true; /* non secure state can access the block for cortex-A35 */

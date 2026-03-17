@@ -33,17 +33,18 @@ int init_sai_edma_adapter(struct sai_adapter *sai_adapter, struct dev *sai_devs,
 
             sai_adapter->sai_chip = sai_chip;
             sai_adapter->num_chips = 1;
-            sai_chip[0].edma_mux1 = kDmaRequestMux0SAI1Tx;
-            sai_chip[0].edma_mux2 = kDmaRequestMux0SAI1Rx;
-            __init_sai_handle(&sai_chip[0], &sai_devs[1]);
+            sai_chip[0].edma_mux1 = kDmaRequestMux0SAI0Tx;
+            sai_chip[0].edma_mux2 = kDmaRequestMux0SAI0Rx;
+            __init_sai_handle(&sai_chip[0], &sai_devs[0]);
             break;
 #endif
 #ifdef CONFIG_BOARD_OSMSFMX8ULP
         case BT_OSMSFMX8ULP:
+        case BT_ARMSTONEMX8ULP:
             sai_chip = pvPortMalloc(sizeof(struct sai_chip));
             if (!sai_chip )
                 return -ENOMEM;
-            
+
             sai_adapter->sai_chip = sai_chip;
             sai_adapter->num_chips = 1;
             sai_chip[0].edma_mux1 = kDmaRequestMux0SAI0Tx;

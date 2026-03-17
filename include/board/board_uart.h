@@ -93,6 +93,8 @@ struct dbg_info {
     enum _serial_port_type port_type;
 };
 
+struct board_descr;
+
 /**
  * @brief initialise dbg info structure
  *
@@ -101,7 +103,7 @@ struct dbg_info {
  * @param btype: board type
  * @return 0 or -ERRNO
  */
-int init_dbg_info(struct dbg_info *dbg_info, struct dev *uart_devs, enum board_types btype);
+int init_dbg_info(struct dbg_info *dbg_info, struct dev *uart_devs, struct board_descr *bdescr);
 
 /**
  * @brief initialise uart adapter structure
@@ -111,7 +113,7 @@ int init_dbg_info(struct dbg_info *dbg_info, struct dev *uart_devs, enum board_t
  * @param btype: board type
  * @return 0 or -ERRNO
  */
-int init_uart_adapter(struct uart_adapter *uart_adapter, struct dev *uart_devs, enum board_types btype);
+int init_uart_adapter(struct uart_adapter *uart_adapter, struct dev *uart_devs, struct board_descr *bdescr);
 
 /**
  * @brief Set and initialise Debug Interface.

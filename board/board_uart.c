@@ -39,8 +39,6 @@ static void __init_uart(struct uart_iface *uart_iface)
     RESET_PeripheralReset(dev->reset);
 }
 
-int init_dbg_info(struct dbg_info *dbg_info, struct dev *uart_devs, enum board_types btype);
-
 void BOARD_InitDebugConsole(struct dbg_info *dbg_info)
 {
     struct uart_iface *uart_iface = dbg_info->uart_iface;
@@ -73,9 +71,14 @@ static void BOARD_LPUART_Init(struct uart_adapter *uart_adapter, struct uart_ifa
 
 static void BOARD_LPUART_Deinit(struct uart_adapter *uart_adapter, struct uart_iface *uart_iface)
 {
-    struct dev *dev = &uart_iface->dev;
+    // struct dev *dev = &uart_iface->dev;
 
-    LPUART_Deinit((LPUART_Type *)dev->base_addr);
+    /* TODO:
+     * The Clock disable part seems to be not working as expected.
+     * The CLK will be disabled, but after a short time, the system hangs.
+     * It looks like someone tries to access the LPUART again. Maybe a caching issue?
+     */
+    // LPUART_Deinit((LPUART_Type *)dev->base_addr);
 }
 
 static status_t BOARD_LPUART_Write(struct uart_adapter *uart_adaper,
@@ -118,19 +121,25 @@ static int is_transfer_complete(struct uart_adapter *uart_adapter, struct uart_i
     return (uart_iface->handle.txState != kLPUART_TxBusy);
 }
 
-int init_uart_adapter(struct uart_adapter *uart_adapter, struct dev *uart_devs, enum board_types btype)
+int init_uart_adapter(struct uart_adapter *uart_adapter, struct dev *uart_devs, struct board_descr *bdescr)
 {
     struct uart_iface *iuart;
+    uint32_t bfeatures = bdescr->bfeatures;
     int ret = 0;
 
-    switch(btype){
+    switch(bdescr->btype){
 #ifdef CONFIG_BOARD_PICOCOREMX8ULP
         case BT_PICOCOREMX8ULP:
             iuart = pvPortMalloc(sizeof(struct uart_iface));
             if(!iuart)
                 return -ENOMEM;
 
-            ret = __init_uart_iface(&iuart[0], &uart_devs[1], 2);
+            if(bfeatures & FEAT_BLUETOOTH){
+                ret = __init_uart_iface(&iuart[0], &uart_devs[0], 1);
+            } else {
+                ret = __init_uart_iface(&iuart[0], &uart_devs[1], 3);
+            }
+
             if(ret){
                 vPortFree(iuart);
                 return ret;
@@ -168,7 +177,8 @@ int init_uart_adapter(struct uart_adapter *uart_adapter, struct dev *uart_devs, 
             if(!iuart)
                 return -ENOMEM;
 
-            ret = __init_uart_iface(&iuart[0], &uart_devs[2], 2);
+            /* UART_B */
+            ret = __init_uart_iface(&iuart[0], &uart_devs[0], 1);
             if(ret){
                 vPortFree(iuart);
                 return ret;
@@ -192,9 +202,10 @@ int init_uart_adapter(struct uart_adapter *uart_adapter, struct dev *uart_devs, 
     return 0;
 }
 
-int init_dbg_info(struct dbg_info *dbg_info, struct dev *uart_devs, enum board_types btype)
+int init_dbg_info(struct dbg_info *dbg_info, struct dev *uart_devs, struct board_descr *bdescr)
 {
     struct uart_iface *uart_iface = NULL;
+    uint32_t bfeatures = bdescr->bfeatures;
     int ret = 0;
 
     uart_iface = pvPortMalloc(sizeof(struct uart_iface));
@@ -202,15 +213,19 @@ int init_dbg_info(struct dbg_info *dbg_info, struct dev *uart_devs, enum board_t
         return -ENOMEM;
     }
 
-    switch(btype){
+    switch(bdescr->btype){
         case BT_PICOCOREMX8ULP:
-            ret = __init_uart_iface(uart_iface, &uart_devs[0], 0);
+            if(bfeatures & FEAT_BLUETOOTH){
+                ret = __init_uart_iface(uart_iface, &uart_devs[1], 0);
+            } else {
+                ret = __init_uart_iface(uart_iface, &uart_devs[0], 0);
+            }
             break;
         case BT_OSMSFMX8ULP:
             ret = __init_uart_iface(uart_iface, &uart_devs[0], 0);
             break;
         case BT_ARMSTONEMX8ULP:
-            ret = __init_uart_iface(uart_iface, &uart_devs[0], 0);
+            ret = __init_uart_iface(uart_iface, &uart_devs[2], 0);
             break;
         default:
             ret = -EINVAL;

@@ -5,6 +5,7 @@
  */
 
 #include "FreeRTOS.h"
+#include <board/board.h>
 #include "fsl_lpi2c.h"
 #include "fsl_i3c.h"
 #include "fsl_reset.h"
@@ -326,10 +327,10 @@ static void _init_i2c_bus(struct i2c_bus *i2c_bus, struct dev *i2c_dev, uint8_t 
     i2c_bus->baudRate_Hz = _get_i2c_baudcfg(i2c_dev, i2c_type);
 }
 
-int init_i2c_adapter(struct i2c_adapter *i2c_adapter, struct dev *i2c_devs, enum board_types btype)
+int init_i2c_adapter(struct i2c_adapter *i2c_adapter, struct dev *i2c_devs, struct board_descr *bdescr)
 {
     struct i2c_bus *i2c_bus;
-    switch(btype){
+    switch(bdescr->btype){
 #ifdef CONFIG_BOARD_PICOCOREMX8ULP
         case BT_PICOCOREMX8ULP:
             i2c_bus = pvPortMalloc(sizeof(struct i2c_bus) * 2);
@@ -339,10 +340,13 @@ int init_i2c_adapter(struct i2c_adapter *i2c_adapter, struct dev *i2c_devs, enum
             i2c_adapter->num_buses = 2;
             i2c_adapter->i2c_buses = i2c_bus;
 
-            /* I2C_C*/
-            _init_i2c_bus(&i2c_bus[0], &i2c_devs[0], 3, I2C_TYPE_LPI2C);
-            /* I2C_D */
-            _init_i2c_bus(&i2c_bus[1], &i2c_devs[4], 4, I2C_TYPE_I3C);
+            /* I2C_B*/
+            _init_i2c_bus(&i2c_bus[0], &i2c_devs[0], 2, I2C_TYPE_LPI2C);
+            /* I2C_RTD */
+            if(bdescr->bfeatures & FEAT_I2C_D_RTD)
+                _init_i2c_bus(&i2c_bus[1], &i2c_devs[4], 4, I2C_TYPE_I3C);
+            else
+                _init_i2c_bus(&i2c_bus[1], &i2c_devs[4], 0, I2C_TYPE_I3C);
             break;
 #endif /* CONFIG_BOARD_PICOCOREMX8ULP */
 #ifdef CONFIG_BOARD_OSMSFMX8ULP
@@ -362,16 +366,18 @@ int init_i2c_adapter(struct i2c_adapter *i2c_adapter, struct dev *i2c_devs, enum
 #endif /* CONFIG_BOARD_PICOCOREMX8ULP */
 #ifdef CONFIG_BOARD_ARMSTONEMX8ULP
         case BT_ARMSTONEMX8ULP:
-            i2c_bus = pvPortMalloc(sizeof(struct i2c_bus) * 1);
+            i2c_bus = pvPortMalloc(sizeof(struct i2c_bus) * 2);
 
             if(!i2c_bus)
                 return -ENOMEM;
 
-            i2c_adapter->num_buses = 1;
+            i2c_adapter->num_buses = 2;
             i2c_adapter->i2c_buses = i2c_bus;
 
-            /* I2C_B*/
-            _init_i2c_bus(&i2c_bus[0], &i2c_devs[4], 3, I2C_TYPE_I3C);
+            /* I2C_D */
+            _init_i2c_bus(&i2c_bus[0], &i2c_devs[2], 4, I2C_TYPE_I2C);
+            /* I2C_E*/
+            _init_i2c_bus(&i2c_bus[1], &i2c_devs[4], 5, I2C_TYPE_I3C);
             break;
 #endif /* CONFIG_BOARD_ARMSTONEMX8ULP */
         default:

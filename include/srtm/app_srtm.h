@@ -69,6 +69,7 @@ typedef enum
 #define APP_WUU_IRQ_PRIO        (5U)
 #define APP_CMC1_IRQ_PRIO       (5U)
 #define APP_BBNSM_IRQ_PRIO      (5U)
+#define APP_LPTMR1_IRQ_PRIO      (5U)
 
 /* Define the timeout ms to polling the A Core link up status */
 #define APP_LINKUP_TIMER_PERIOD_MS (10U)
@@ -113,8 +114,10 @@ typedef enum
 #define APP_SAI_RX_DMA_CHANNEL (17U)
 
 /* Keypad index */
-#define APP_KEYPAD_INDEX_VOL_MINUS (114U)
-#define APP_KEYPAD_INDEX_VOL_PLUS  (115U)
+#define KEY_SUSPEND		(205U)
+#define KEY_WAKEUP		(143U)
+#define APP_KEYPAD_SUSPEND_KEY_IDX (KEY_SUSPEND)
+#define APP_KEYPAD_WAKEUP_KEY_IDX  (KEY_WAKEUP)
 
 /* WUU module index */
 #define WUU_MODULE_LPTMR0 (0U)

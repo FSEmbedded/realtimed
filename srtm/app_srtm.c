@@ -1,9 +1,9 @@
 /*
  * Copyright 2021-2022 NXP
  * All rights reserved.
- * 
+ *
  * Copyright (c) 2024 F&S Elektronik Systeme GmbH
- * 
+ *
  * This program includes portions of code licensed under the BSD-3-Clause License.
  * Modifications and extensions were made by F&S Elektronik Systeme GmbH in 2024.
  *
@@ -23,9 +23,14 @@
 #include <srtm/srtm_io_service.h>
 #include <srtm/srtm_lfcl_service.h>
 #include <srtm/srtm_pwm_service.h>
-#include <srtm/app_srtm.h>
+#include <srtm/srtm_audio_service.h>
+#include <srtm/srtm_sai_edma_adapter.h>
+#include <srtm/srtm_uart_service.h>
+#include <srtm/srtm_keypad_service.h>
+#include <srtm/srtm_spi_service.h>
 #include <board/board.h>
 #include <board/board_i2c.h>
+#include <board/board_sai.h>
 #include "fsl_mu.h"
 #include "fsl_wuu.h"
 #include "fsl_upower.h"
@@ -33,11 +38,10 @@
 #include "rsc_table.h"
 #include "fsl_bbnsm.h"
 #include "fsl_sentinel.h"
-#include <srtm/srtm_audio_service.h>
-#include <srtm/srtm_sai_edma_adapter.h>
-#include <board/board_sai.h>
-#include <srtm/srtm_uart_service.h>
-#include <srtm/srtm_spi_service.h>
+#include <srtm/app_srtm.h>
+#include "fsl_lptmr.h"
+#include "lpm.h"
+
 
 void APP_SRTM_WakeupCA35(void);
 
@@ -97,6 +101,7 @@ static srtm_peercore_t core;
 static struct srtm_i2c_adapter srtm_i2c_adapter;
 static struct srtm_pwm_adapter srtm_pwm_adapter;
 static struct srtm_io_adapter srtm_io_adapter;
+static srtm_service_t keypadService;
 static SemaphoreHandle_t monSig;
 static struct rpmsg_lite_instance *rpmsgHandle;
 static app_rpmsg_monitor_t rpmsgMonitor;
@@ -108,6 +113,10 @@ static TimerHandle_t restoreRegValOfMuTimer; /* use the timer to restore registe
 
 static TimerHandle_t
     chngModeFromActToDslForApdTimer; /* use the timer to change mode of APD from active mode to Deep Sleep Mode */
+static TimerHandle_t keypadSuspendTimer;   /* use the timer to simulate keypad suspend key pressed event */
+static TimerHandle_t keypadPowerTimer;   /* use the timer to simulate keypad power key pressed event */
+static TimerHandle_t powerOffMCoreTimer;   /* use the timer to power off MCore when APD enter DPD mode */
+static TimerHandle_t suspendMCoreTimer;   /* use the timer to suspend MCore when APD enter PD mode */
 
 static app_irq_handler_t irqHandler;
 static void *irqHandlerParam;
@@ -399,6 +408,15 @@ void WUU0_IRQHandler(void)
     {
         irqHandler(WUU0_IRQn, irqHandlerParam);
     }
+
+    if (WUU_GetInternalWakeupModuleFlag(WUU0, WUU_MODULE_LPTMR1))
+    {
+        /* Woken up by LPTMR, then clear LPTMR flag. */
+        LPTMR_ClearStatusFlags(LPTMR1, kLPTMR_TimerCompareFlag);
+        LPTMR_DisableInterrupts(LPTMR1, kLPTMR_TimerInterruptEnable);
+        LPTMR_StopTimer(LPTMR1);
+        APP_WakeupACore();
+    }
 }
 
 void BBNSM_IRQHandler(void)
@@ -429,6 +447,11 @@ void BBNSM_IRQHandler(void)
         {
             /* Wakeup A Core (A35) */
             APP_WakeupACore();
+            xTimerStart(keypadPowerTimer, portMAX_DELAY);
+        }
+        else if (AD_CurrentMode == AD_ACT) /* Application Domain is in Active Mode */
+        {
+            xTimerStart(keypadSuspendTimer, portMAX_DELAY);
         }
         /* Clear BBNSM button off interrupt */
         BBNSM_ClearStatusFlags(BBNSM, kBBNSM_PWR_OFF_InterruptFlag);
@@ -510,6 +533,89 @@ static void APP_LinkupTimerCallback(TimerHandle_t xTimer)
     }
 }
 
+static void APP_keypadSuspendTimerCallback(TimerHandle_t xTimer)
+{
+    if (AD_CurrentMode == AD_ACT)
+    {
+        PRINTF("Notify Suspend Key Pressed Event to A Core\r\n");
+        SRTM_KeypadService_NotifyKeypadEvent(keypadService, APP_KEYPAD_SUSPEND_KEY_IDX, SRTM_KeypadValuePressed);
+        SRTM_KeypadService_NotifyKeypadEvent(keypadService, APP_KEYPAD_SUSPEND_KEY_IDX, SRTM_KeypadValueReleased);
+        xTimerStop(keypadSuspendTimer, portMAX_DELAY);
+    } else {
+        xTimerStart(keypadSuspendTimer, portMAX_DELAY);
+    }
+}
+
+static void APP_keypadPowerTimerCallback(TimerHandle_t xTimer)
+{
+    if (AD_CurrentMode == AD_ACT) {
+        PRINTF("Notify Wakeup Key Pressed Event to A Core\r\n");
+        SRTM_KeypadService_NotifyKeypadEvent(keypadService, APP_KEYPAD_WAKEUP_KEY_IDX, SRTM_KeypadValuePressed);
+        SRTM_KeypadService_NotifyKeypadEvent(keypadService, APP_KEYPAD_WAKEUP_KEY_IDX, SRTM_KeypadValueReleased);
+        xTimerStop(keypadPowerTimer, portMAX_DELAY);
+    } else {
+        xTimerStart(keypadSuspendTimer, portMAX_DELAY);
+    }
+}
+
+static void APP_powerOffMCoreTimerCallback(TimerHandle_t xTimer)
+{
+    volatile uint32_t *bbnsm_ctrl = (void *)(BBNSM_BASE + 0x8);
+    struct board_descr *bdescr = get_board_description();
+
+    if (AD_CurrentMode == AD_DPD)
+    {
+        BOARD_carrier_enable(bdescr, false);
+        PRINTF("Power Off: Press ON/OFF for reboot \r\n");
+        vTaskDelay(pdMS_TO_TICKS(1000));
+        *bbnsm_ctrl |= (1U << 25);
+    }
+    xTimerStop(powerOffMCoreTimer, portMAX_DELAY);
+}
+
+static void APP_suspendMCoreTimerCallback(TimerHandle_t xTimer)
+{
+    #if defined(CONFIG_TIMEOUT_WAKEUP_MCORE)
+    lptmr_config_t lptmrConfig;
+
+    /* Setup LPTMR. */
+    LPTMR_GetDefaultConfig(&lptmrConfig);
+    lptmrConfig.prescalerClockSource = kLPTMR_PrescalerClock_1;  /* Use RTC 1KHz as clock source. */
+    lptmrConfig.bypassPrescaler      = false;
+    lptmrConfig.value                = kLPTMR_Prescale_Glitch_3; /* Divide clock source by 16. */
+    LPTMR_Init(LPTMR1, &lptmrConfig);
+    NVIC_SetPriority(LPTMR1_IRQn, APP_LPTMR1_IRQ_PRIO);
+
+    EnableIRQ(LPTMR1_IRQn);
+
+    LPTMR_SetTimerPeriod(LPTMR1, (1000UL * CONFIG_TIMEOUT_WAKEUP_SEC / 16U));
+    LPTMR_StartTimer(LPTMR1);
+    LPTMR_EnableInterrupts(LPTMR1, kLPTMR_TimerInterruptEnable);
+
+    /* Set WUU LPTMR1 module wakeup source. */
+    APP_SRTM_SetWakeupModule(WUU_MODULE_LPTMR1, LPTMR1_WUU_WAKEUP_EVENT);
+    PCC1->PCC_LPTMR1 &= ~PCC1_PCC_LPTMR1_SSADO_MASK;
+    PCC1->PCC_LPTMR1 |= PCC1_PCC_LPTMR1_SSADO(1);
+#endif
+    xTimerStop(suspendMCoreTimer, portMAX_DELAY);
+    LPM_SystemSleep();
+    // LPM_SystemDeepSleep();
+}
+
+void LPTMR1_IRQHandler(void)
+{
+    BOARD_InitDebugConsole(&(get_board_description()->dbg_info));
+    if (kLPTMR_TimerInterruptEnable & LPTMR_GetEnabledInterrupts(LPTMR1))
+    {
+        LPTMR_ClearStatusFlags(LPTMR1, kLPTMR_TimerCompareFlag);
+        LPTMR_DisableInterrupts(LPTMR1, kLPTMR_TimerInterruptEnable);
+        LPTMR_StopTimer(LPTMR1);
+        if (AD_CurrentMode == AD_PD && AD_WillEnterMode == AD_ACT)
+            APP_WakeupACore();
+    }
+}
+
+
 static void APP_SRTM_NotifyPeerCoreReady(struct rpmsg_lite_instance *rpmsgHandle, bool ready)
 {
     /* deinit and init app task(str_echo/pingpong rpmsg) in APP_SRTM_StateReboot only */
@@ -568,6 +674,11 @@ static void APP_SRTM_Linkup(void)
     chan               = SRTM_RPMsgEndpoint_Create(&rpmsgConfig);
     SRTM_PeerCore_AddChannel(core, chan);
 
+    /* Create and add SRTM Keypad channel to peer core */
+    rpmsgConfig.epName = APP_SRTM_KEYPAD_CHANNEL_NAME;
+    chan               = SRTM_RPMsgEndpoint_Create(&rpmsgConfig);
+    SRTM_PeerCore_AddChannel(core, chan);
+
     rpmsgConfig.epName = APP_SRTM_SPI_CHANNEL_NAME;
     chan               = SRTM_RPMsgEndpoint_Create(&rpmsgConfig);
     SRTM_PeerCore_AddChannel(core, chan);
@@ -611,7 +722,7 @@ static void APP_SRTM_GpioReset(void)
 
         for(i1 = 0; i1 < io_iface->num_pins; i1++){
             io_pin = &io_iface->io_pins[i1];
-            
+
             if(io_pin->overridden){
                 /* The IO is configured by CM33 instead of CA35, don't reset HW configuration. */
                 io_pin->event  = IO_EventNone;
@@ -918,6 +1029,8 @@ static void APP_SRTM_InitAudioService(struct board_descr *bdescr)
     srtm_sai_edma_config_t saiRxConfig;
     struct sai_chip *sai_chip = (struct sai_chip *)bdescr->sai_adapter.sai_chip;
 
+    PRINTF("APP_SRTM: Start %s\r\n", __func__);
+
     APP_SRTM_InitAudioDevice(bdescr);
 
     memset(&saiTxConfig, 0, sizeof(saiTxConfig));
@@ -1032,7 +1145,7 @@ void APP_SRTM_IO_ISR(void *pvParameter1, uint32_t ulParameter2)
         case CONFIG_GPIOA_IFACEID:
             APP_SRTM_GPIOA_ISR_M33(pinID);
             break;
-        case CONFIG_GPIOB_IFACEID: 
+        case CONFIG_GPIOB_IFACEID:
             APP_SRTM_GPIOB_ISR_M33(pinID);
             break;
         case CONFIG_GPIOC_IFACEID:
@@ -1049,23 +1162,29 @@ static void APP_SRTM_PCore_InitIOService(struct board_descr *bdescr)
     struct io_adapter *io_adapter = &bdescr->io_adapter;
 
     /* Register Pins */
-    SRTM_IoService_RegisterPin(srtm_io_adapter.service, CONFIG_GPIOA_IFACEID, PCORE_GPIOA_GPIO_J1_44, NULL);
-    SRTM_IoService_RegisterPin(srtm_io_adapter.service, CONFIG_GPIOA_IFACEID, PCORE_GPIOA_GPIO_J1_46, NULL);
-    SRTM_IoService_RegisterPin(srtm_io_adapter.service, CONFIG_GPIOA_IFACEID, PCORE_GPIOA_I2C_IRQ_B, NULL);
-    SRTM_IoService_RegisterPin(srtm_io_adapter.service, CONFIG_GPIOA_IFACEID, PCORE_GPIOA_I2C_RTC_IRQ, NULL);
-    SRTM_IoService_RegisterPin(srtm_io_adapter.service, CONFIG_GPIOB_IFACEID, PCORE_GPIOB_BT_IRQ, NULL);
-    SRTM_IoService_RegisterPin(srtm_io_adapter.service, CONFIG_GPIOB_IFACEID, PCORE_GPIOB_WLAN_HOST_WAKE, NULL);
-    SRTM_IoService_RegisterPin(srtm_io_adapter.service, CONFIG_GPIOB_IFACEID, PCORE_GPIOB_WLAN_WAKE_HOST, NULL);
-    SRTM_IoService_RegisterPin(srtm_io_adapter.service, CONFIG_GPIOB_IFACEID, PCORE_GPIOB_WLAN_WAKE_HOST, NULL);
-    SRTM_IoService_RegisterPin(srtm_io_adapter.service, CONFIG_GPIOB_IFACEID, PCORE_GPIOB_RSTN, NULL);
-    SRTM_IoService_RegisterPin(srtm_io_adapter.service, CONFIG_GPIOC_IFACEID, PCORE_GPIOC_GPIO_J2_100, NULL);
-    SRTM_IoService_RegisterPin(srtm_io_adapter.service, CONFIG_GPIOC_IFACEID, PCORE_GPIOC_GPIO_J2_84, NULL);
-    SRTM_IoService_RegisterPin(srtm_io_adapter.service, CONFIG_GPIOC_IFACEID, PCORE_GPIOC_AUDIO_B_I2S_RXFS, NULL);
-    SRTM_IoService_RegisterPin(srtm_io_adapter.service, CONFIG_GPIOC_IFACEID, PCORE_GPIOC_GPIO_J2_86, NULL);
-    SRTM_IoService_RegisterPin(srtm_io_adapter.service, CONFIG_GPIOC_IFACEID, PCORE_GPIOC_GPIO_J2_88, NULL);
-    SRTM_IoService_RegisterPin(srtm_io_adapter.service, CONFIG_GPIOC_IFACEID, PCORE_GPIOC_GPIO_J2_90, NULL);
-    SRTM_IoService_RegisterPin(srtm_io_adapter.service, CONFIG_GPIOC_IFACEID, PCORE_GPIOC_GPIO_J2_92, NULL);
-    SRTM_IoService_RegisterPin(srtm_io_adapter.service, CONFIG_GPIOC_IFACEID, PCORE_GPIOC_GPIO_J2_98, NULL);
+    SRTM_IoService_RegisterPin(srtm_io_adapter.service, CONFIG_GPIOA_IFACEID, PCORE_GPIOA_GPIO_J2_33, NULL);
+    SRTM_IoService_RegisterPin(srtm_io_adapter.service, CONFIG_GPIOA_IFACEID, PCORE_GPIOA_I2C_RTD_IRQ_B, NULL);
+    SRTM_IoService_RegisterPin(srtm_io_adapter.service, CONFIG_GPIOA_IFACEID, PCORE_GPIOA_I2C_B_IRQ_B, NULL);
+    SRTM_IoService_RegisterPin(srtm_io_adapter.service, CONFIG_GPIOA_IFACEID, PCORE_GPIOA_SPI_B_CS, NULL);
+    SRTM_IoService_RegisterPin(srtm_io_adapter.service, CONFIG_GPIOA_IFACEID, PCORE_GPIOA_PMIC_IRQ_B, NULL);
+    SRTM_IoService_RegisterPin(srtm_io_adapter.service, CONFIG_GPIOB_IFACEID, PCORE_GPIOB_GPIO_J2_84, NULL);
+    SRTM_IoService_RegisterPin(srtm_io_adapter.service, CONFIG_GPIOB_IFACEID, PCORE_GPIOB_GPIO_J2_86, NULL);
+    SRTM_IoService_RegisterPin(srtm_io_adapter.service, CONFIG_GPIOB_IFACEID, PCORE_GPIOB_GPIO_J2_88, NULL);
+    SRTM_IoService_RegisterPin(srtm_io_adapter.service, CONFIG_GPIOB_IFACEID, PCORE_GPIOB_GPIO_J2_90, NULL);
+    SRTM_IoService_RegisterPin(srtm_io_adapter.service, CONFIG_GPIOB_IFACEID, PCORE_GPIOB_GPIO_J2_92, NULL);
+    SRTM_IoService_RegisterPin(srtm_io_adapter.service, CONFIG_GPIOB_IFACEID, PCORE_GPIOB_GPIO_J2_94, NULL);
+    SRTM_IoService_RegisterPin(srtm_io_adapter.service, CONFIG_GPIOB_IFACEID, PCORE_GPIOB_GPIO_J2_96, NULL);
+    SRTM_IoService_RegisterPin(srtm_io_adapter.service, CONFIG_GPIOB_IFACEID, PCORE_GPIOB_GPIO_J2_98, NULL);
+    SRTM_IoService_RegisterPin(srtm_io_adapter.service, CONFIG_GPIOB_IFACEID, PCORE_GPIOB_GPIO_J2_100, NULL);
+    SRTM_IoService_RegisterPin(srtm_io_adapter.service, CONFIG_GPIOB_IFACEID, PCORE_GPIOB_GPIO_J2_77, NULL);
+    SRTM_IoService_RegisterPin(srtm_io_adapter.service, CONFIG_GPIOB_IFACEID, PCORE_GPIOB_GPIO_J2_79, NULL);
+    SRTM_IoService_RegisterPin(srtm_io_adapter.service, CONFIG_GPIOC_IFACEID, PCORE_GPIOC_GPIO_J1_88, NULL);
+    SRTM_IoService_RegisterPin(srtm_io_adapter.service, CONFIG_GPIOC_IFACEID, PCORE_GPIOC_GPIO_J2_65, NULL);
+    SRTM_IoService_RegisterPin(srtm_io_adapter.service, CONFIG_GPIOC_IFACEID, PCORE_GPIOC_LVDS_CONV_RST, NULL);
+    SRTM_IoService_RegisterPin(srtm_io_adapter.service, CONFIG_GPIOC_IFACEID, PCORE_GPIOC_GPIO_J2_67, NULL);
+    SRTM_IoService_RegisterPin(srtm_io_adapter.service, CONFIG_GPIOC_IFACEID, PCORE_GPIOC_GPIO_J2_69, NULL);
+    SRTM_IoService_RegisterPin(srtm_io_adapter.service, CONFIG_GPIOC_IFACEID, PCORE_GPIOC_GPIO_J2_31, NULL);
+    SRTM_IoService_RegisterPin(srtm_io_adapter.service, CONFIG_GPIOC_IFACEID, PCORE_GPIOC_GPIO_J2_60, NULL);
 
     /* Register IRQHandler */
     IO_RegisterIRQCallback(io_adapter, CONFIG_GPIOA_IFACEID, &APP_SRTM_IO_ISR);
@@ -1098,6 +1217,23 @@ static void APP_SRTM_OSM_InitIOSevice(struct board_descr *bdescr)
 }
 #endif /* CONFIG_BOARD_OSMSFMX8ULP */
 
+#ifdef CONFIG_BOARD_ARMSTONEMX8ULP
+static void APP_SRTM_armStone_InitIOSevice(struct board_descr *bdescr)
+{
+    struct io_adapter *io_adapter = &bdescr->io_adapter;
+    /* Register Pins */
+    SRTM_IoService_RegisterPin(srtm_io_adapter.service, CONFIG_GPIOB_IFACEID, ASTONE_GPIOB_CARRIER_PWR_EN, NULL);
+    SRTM_IoService_RegisterPin(srtm_io_adapter.service, CONFIG_GPIOC_IFACEID, ASTONE_GPIOC_WLAN_BT_EN, NULL);
+    SRTM_IoService_RegisterPin(srtm_io_adapter.service, CONFIG_GPIOC_IFACEID, ASTONE_GPIOC_BT_WAKE_HOST, NULL);
+    SRTM_IoService_RegisterPin(srtm_io_adapter.service, CONFIG_GPIOC_IFACEID, ASTONE_GPIOC_WM8904_IRQ, NULL);
+
+    /* Register IRQHandler */
+    IO_RegisterIRQCallback(io_adapter, CONFIG_GPIOA_IFACEID, &APP_SRTM_IO_ISR);
+    IO_RegisterIRQCallback(io_adapter, CONFIG_GPIOB_IFACEID, &APP_SRTM_IO_ISR);
+    IO_RegisterIRQCallback(io_adapter, CONFIG_GPIOC_IFACEID, &APP_SRTM_IO_ISR);
+}
+#endif /* CONFIG_BOARD_ARMSTONEMX8ULP */
+
 static void APP_SRTM_InitIOService(struct board_descr *bdescr)
 {
     enum board_types btype = bdescr->btype;
@@ -1127,8 +1263,7 @@ static void APP_SRTM_InitIOService(struct board_descr *bdescr)
 #endif /* CONFIG_BOARD_OSMSFMX8ULP */
 #ifdef CONFIG_BOARD_ARMSTONEMX8ULP
         case BT_ARMSTONEMX8ULP:
-            // TODO:
-            // APP_SRTM_armStone_InitIOSevice(bdescr);
+            APP_SRTM_armStone_InitIOSevice(bdescr);
             break;
 #endif /* CONFIG_BOARD_ARMSTONEMX8ULP */
 
@@ -1136,6 +1271,15 @@ static void APP_SRTM_InitIOService(struct board_descr *bdescr)
             break;
     }
     SRTM_Dispatcher_RegisterService(disp, srtm_io_adapter.service);
+}
+
+static void APP_SRTM_InitIoKeyService(void)
+{
+    PRINTF("APP_SRTM: Start %s\r\n", __func__);
+    keypadService = SRTM_KeypadService_Create();
+    SRTM_KeypadService_RegisterKey(keypadService, APP_KEYPAD_SUSPEND_KEY_IDX, NULL, NULL);
+    SRTM_KeypadService_RegisterKey(keypadService, APP_KEYPAD_WAKEUP_KEY_IDX, NULL, NULL);
+    SRTM_Dispatcher_RegisterService(disp, keypadService);
 }
 
 static void APP_SRTM_A35ResetHandler(void)
@@ -1186,15 +1330,9 @@ int32_t MU0_A_IRQHandler(void)
             EnableIRQ(CMC1_IRQn);
             /* Help A35 to setup TRDC after A35 entered deep power down moade */
             BOARD_SetTrdcAfterApdReset();
-            /*
-             *  When RTD is the ower of LPAV and APD enter PD mode, RTD need poweroff LDO1, reduce BUCK3 to 0.73V,
-             *  Set flag to put ddr into retention when RTD enter PD mode.
-             *  otherwise APD side is responsible to control them in PD mode.
-             */
-            srtm_procedure_t proc = SRTM_Procedure_Create(APP_SRTM_SetLPAV, (void *)AD_DPD, NULL);
 
-            assert(proc);
-            SRTM_Dispatcher_PostProc(disp, proc);
+            /* Node: We trigger a hard PowerOFF via BBNSM in this state */
+            xTimerStart(powerOffMCoreTimer, portMAX_DELAY);
         }
         else
         {
@@ -1211,6 +1349,9 @@ int32_t MU0_A_IRQHandler(void)
 
             assert(proc);
             SRTM_Dispatcher_PostProc(disp, proc);
+
+            if (!BOARD_IsLPAVOwnedByRTD())
+                xTimerStart(suspendMCoreTimer, portMAX_DELAY);
         }
         AD_WillEnterMode = AD_ACT;
     }
@@ -1352,6 +1493,8 @@ static void APP_SRTM_InitUartService(struct board_descr *bdescr)
 {
     uartAdapter.uart_adapter = &bdescr->uart_adapter;
 
+    PRINTF("APP_SRTM: Start %s\r\n", __func__);
+
     SRTM_UartService_Create(&uartAdapter);
     SRTM_Dispatcher_RegisterService(disp, uartAdapter.service);
 }
@@ -1387,7 +1530,10 @@ static void APP_SRTM_InitServices(struct board_descr *bdescr)
     APP_SRTM_InitPwmService(bdescr);
     APP_SRTM_InitAudioService(bdescr);
     APP_SRTM_InitUartService(bdescr);
+    APP_SRTM_InitIoKeyService();
     APP_SRTM_InitSpiService(bdescr);
+
+    EnableIRQ(BBNSM_IRQn);
 }
 
 void APP_PowerOffCA35(void)
@@ -1458,15 +1604,15 @@ static void SRTM_MonitorTask(void *pvParameters)
                  * Therefore The U-Boot handshake is done,
                  * before SRTM starts up to get board-cfgs
                  */
-                if (state != APP_SRTM_StateInit && BOARD_HandshakeWithUboot())
-                {
-                    /* CMC1(CMC_AD) is belongs to Application Domain, so if want to access these registers of CMC1, pls
-                     * make sure that mcore can access CMC1(mcore can access CMC1 after BOARD_HandshakeWithUboot) */
-                    CMC_ADClrAD_PSDORF(
-                        CMC_AD,
-                        CMC_AD_AD_PSDORF_AD_PERIPH(
-                            1)); /* need clear it, unless A Core cannot reboot after A Core suspend and resume back */
-                }
+                if (state != APP_SRTM_StateInit)
+                    BOARD_HandshakeWithUboot();
+
+                /* CMC1(CMC_AD) is belongs to Application Domain, so if want to access these registers of CMC1, pls
+                 * make sure that mcore can access CMC1(mcore can access CMC1 after BOARD_HandshakeWithUboot) */
+                CMC_ADClrAD_PSDORF(
+                    CMC_AD,
+                    CMC_AD_AD_PSDORF_AD_PERIPH(
+                        1)); /* need clear it, unless A Core cannot reboot after A Core suspend and resume back */
 
                 /* enable CMC1 interrupt after handshake with uboot(M Core cannot access CMC1 that belongs to
                  * Application Domain when Power On Reset; M Core can access CMC1 after uboot(running on A Core) enable
@@ -1601,6 +1747,14 @@ void APP_SRTM_Init(void)
 
     monSig = xSemaphoreCreateBinary();
     assert(monSig);
+
+    keypadSuspendTimer = xTimerCreate("keypadSuspendTimer", APP_MS2TICK(500), pdFALSE, NULL, APP_keypadSuspendTimerCallback);
+    keypadPowerTimer = xTimerCreate("keypadPowerTimer", APP_MS2TICK(500), pdFALSE, NULL, APP_keypadPowerTimerCallback);
+    powerOffMCoreTimer =
+        xTimerCreate("powerOffMCoreTimer", APP_MS2TICK(500), pdFALSE, NULL, APP_powerOffMCoreTimerCallback);
+    suspendMCoreTimer =
+        xTimerCreate("suspendMCoreTimer", APP_MS2TICK(500), pdFALSE, NULL, APP_suspendMCoreTimerCallback);
+
 
     /* Note: Create a task to refresh S400(sentinel) watchdog timer to keep S400 alive, the task will be removed after
      * the bug is fixed in soc A1 */
