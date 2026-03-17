@@ -5,6 +5,8 @@
 #include "board/board.h"
 #include <board/board_dev.h>
 
+#define SPI_FLAG_KEEP_CS          (1 << 3)
+
 static struct spi_iface *get_iface_from_idx(struct spi_adapter *spi_adapter, uint8_t ifaceId)
 {
     struct spi_iface *spi_iface = spi_adapter->spi_iface;
@@ -45,8 +47,8 @@ void BOARD_LPSPI_Init(struct spi_adapter *spi_adapter, struct spi_iface *spi_ifa
     config.pcsToSckDelayInNanoSec = 1000000000U / (config.baudRate * 2U);;
     config.lastSckToPcsDelayInNanoSec = 1000000000U / (config.baudRate * 2U);
     config.betweenTransferDelayInNanoSec = 1000000000U / (config.baudRate * 2U);
-    config.cpol = kLPSPI_ClockPolarityActiveHigh;
-    config.cpha = kLPSPI_ClockPhaseFirstEdge;
+    config.cpol = kLPSPI_ClockPolarityActiveLow;
+    config.cpha = kLPSPI_ClockPhaseSecondEdge;
     config.pcsActiveHighOrLow = kLPSPI_PcsActiveLow;
     config.pinCfg = kLPSPI_SdoInSdiOut;
     config.dataOutConfig = kLpspiDataOutRetained;
@@ -81,7 +83,7 @@ status_t BOARD_LPSPI_Transfer(struct spi_adapter *spi_adapter, struct spi_iface 
         LPSPI_ClearStatusFlags(base, kLPSPI_AllStatusFlag);
     }
 
-    if (flags & 0x02) {
+    if (flags & SPI_FLAG_KEEP_CS) {
         transfer.configFlags = kLPSPI_MasterPcs0 | kLPSPI_MasterPcsContinuous;
         last_was_continuous = true;
     } else {
