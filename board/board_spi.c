@@ -5,7 +5,9 @@
 #include "board/board.h"
 #include <board/board_dev.h>
 
-#define SPI_FLAG_KEEP_CS          (1 << 3)
+#define SPI_FLAG_CPHA             (1 << 0)
+#define SPI_FLAG_CPOL             (1 << 1)
+#define SPI_FLAG_KEEP_CS          (1 << 2)
 
 static struct spi_iface *get_iface_from_idx(struct spi_adapter *spi_adapter, uint8_t ifaceId)
 {
@@ -36,24 +38,24 @@ static void __init_spi(struct spi_iface *spi_iface)
 
 void BOARD_LPSPI_Init(struct spi_adapter *spi_adapter, struct spi_iface *spi_iface)
 {
-    lpspi_master_config_t config = spi_iface->config;
+    lpspi_master_config_t *config = &spi_iface->config;
 
     __init_spi(spi_iface);
     LPSPI_Enable((LPSPI_Type *)spi_iface->dev.base_addr, true);
 
-    LPSPI_MasterGetDefaultConfig(&config);
-    config.baudRate = 2000000U;
-    config.whichPcs = kLPSPI_Pcs0;
-    config.pcsToSckDelayInNanoSec = 1000000000U / (config.baudRate * 2U);;
-    config.lastSckToPcsDelayInNanoSec = 1000000000U / (config.baudRate * 2U);
-    config.betweenTransferDelayInNanoSec = 1000000000U / (config.baudRate * 2U);
-    config.cpol = kLPSPI_ClockPolarityActiveLow;
-    config.cpha = kLPSPI_ClockPhaseSecondEdge;
-    config.pcsActiveHighOrLow = kLPSPI_PcsActiveLow;
-    config.pinCfg = kLPSPI_SdoInSdiOut;
-    config.dataOutConfig = kLpspiDataOutRetained;
+    LPSPI_MasterGetDefaultConfig(config);
+    config->baudRate = 2000000U;
+    config->whichPcs = kLPSPI_Pcs0;
+    config->pcsToSckDelayInNanoSec = 1000000000U / (config->baudRate * 2U);;
+    config->lastSckToPcsDelayInNanoSec = 1000000000U / (config->baudRate * 2U);
+    config->betweenTransferDelayInNanoSec = 1000000000U / (config->baudRate * 2U);
+    config->cpol = kLPSPI_ClockPolarityActiveLow;
+    config->cpha = kLPSPI_ClockPhaseSecondEdge;
+    config->pcsActiveHighOrLow = kLPSPI_PcsActiveLow;
+    config->pinCfg = kLPSPI_SdiInSdoOut;
+    config->dataOutConfig = kLpspiDataOutRetained;
 
-    LPSPI_MasterInit((LPSPI_Type *)spi_iface->dev.base_addr, &config, CLOCK_GetIpFreq(spi_iface->dev.ip_name));
+    LPSPI_MasterInit((LPSPI_Type *)spi_iface->dev.base_addr, config, CLOCK_GetIpFreq(spi_iface->dev.ip_name));
     LPSPI_MasterTransferCreateHandle((LPSPI_Type *)spi_iface->dev.base_addr, &spi_iface->handle, lpspi_callback, spi_iface);
 }
 
@@ -62,6 +64,30 @@ void BOARD_LPSPI_Deinit(struct spi_adapter *spi_adapter, struct spi_iface *spi_i
     struct dev *dev = &spi_iface->dev;
 
     LPSPI_Deinit((LPSPI_Type *)dev->base_addr);
+}
+
+void BOARD_LPSPI_Configure(struct spi_adapter *spi_adapter, struct spi_iface *spi_iface, uint8_t flags, uint32_t speed_hz)
+{
+    lpspi_master_config_t *config = &spi_iface->config;
+
+    config->baudRate = speed_hz;
+    config->pcsToSckDelayInNanoSec = 1000000000U / (config->baudRate * 2U);;
+    config->lastSckToPcsDelayInNanoSec = 1000000000U / (config->baudRate * 2U);
+    config->betweenTransferDelayInNanoSec = 1000000000U / (config->baudRate * 2U);
+
+    if (flags & SPI_FLAG_CPHA) {
+        config->cpha = kLPSPI_ClockPhaseSecondEdge;
+    } else {
+        config->cpha = kLPSPI_ClockPhaseFirstEdge;
+    }
+
+    if (flags & SPI_FLAG_CPOL) {
+        config->cpol = kLPSPI_ClockPolarityActiveLow;
+    } else {
+        config->cpol = kLPSPI_ClockPolarityActiveHigh;
+    }
+
+    LPSPI_MasterInit((LPSPI_Type *)spi_iface->dev.base_addr, config, CLOCK_GetIpFreq(spi_iface->dev.ip_name));
 }
 
 status_t BOARD_LPSPI_Transfer(struct spi_adapter *spi_adapter, struct spi_iface *spi_iface, const uint8_t *tx_buf, uint8_t *rx_buf, uint32_t len, uint8_t flags)
@@ -172,6 +198,7 @@ int init_spi_adapter(struct spi_adapter *spi_adapter, struct dev *spi_devs, enum
     spi_adapter->ops.init = &BOARD_LPSPI_Init;
     spi_adapter->ops.deinit = &BOARD_LPSPI_Deinit;
     spi_adapter->ops.transfer = &BOARD_LPSPI_Transfer;
+    spi_adapter->ops.configure = &BOARD_LPSPI_Configure;
 
     return 0;
 }

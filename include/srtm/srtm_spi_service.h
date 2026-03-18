@@ -22,9 +22,9 @@
 #define SRTM_DEBUG_VERBOSE_LEVEL SRTM_DEBUG_VERBOSE_NONE
 #endif
 #ifndef SRTM_SPI_ENDPOINT_MAX_NUM
-#define SRTM_SPI_ENDPOINT_MAX_NUM (32U)
+#define SRTM_SPI_ENDPOINT_MAX_NUM (2U)
 #endif
-#define BOARD_SPI_MAX_BUFFER_SIZE 478
+#define BOARD_SPI_MAX_BUFFER_SIZE 475
 /* Protocol definition */
 #define SRTM_SPI_CATEGORY (0xCU)
 #define SRTM_SPI_VERSION (0x0100U)
@@ -62,6 +62,7 @@ SRTM_PACKED_BEGIN struct srtm_spi_payload
     uint8_t busID;
     uint16_t slaveAddr;
     uint8_t flags;
+    uint32_t speed_hz;
     uint16_t len;
     uint8_t buf[1];
 } SRTM_PACKED_END;

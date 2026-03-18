@@ -42,6 +42,10 @@ srtm_status_t SRTM_SpiService_HandleRequest(srtm_service_t service, srtm_request
         else if (srtm_spi_channels[i].bus_id == bus_id)
         {
             iface = adapter->ops.get_iface_from_idx(adapter, spiReq->busID);
+
+            /* Update Channel after Reboot */
+            if (srtm_spi_channels[i].chan != channel)
+                srtm_spi_channels[i].chan = channel;
             break;
         }
     }
@@ -59,6 +63,7 @@ srtm_status_t SRTM_SpiService_HandleRequest(srtm_service_t service, srtm_request
 
                 static uint8_t rxbuf[BOARD_SPI_MAX_BUFFER_SIZE];
 
+                adapter->ops.configure(adapter, iface, spiReq->flags, spiReq->speed_hz);
                 ret = adapter->ops.transfer(adapter, iface, spiReq->buf, rxbuf, len, spiReq->flags);
 
                 if (ret != kStatus_Success) {

@@ -47,6 +47,14 @@ struct spi_ops {
      * @return pointer to spi_iface or NULL if not found
      */
     struct spi_iface *(*get_iface_from_idx)(struct spi_adapter *spi_adapter, uint8_t ifaceId);
+    /**
+     * @brief configure spi interface
+     * @param spi_adapter: spi adapter description
+     * @param spi_iface: spi interface to configure
+     * @param flags: flags contains SPI-Mode
+     * @param speed_hz: transfer speed in Hz
+     */
+    void (*configure)(struct spi_adapter *spi_adapter, struct spi_iface *spi_iface, uint8_t flags, uint32_t speed_hz);
 };
 
 struct spi_adapter {
