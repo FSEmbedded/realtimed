@@ -1098,7 +1098,7 @@ void BOARD_InitBootPins(struct board_descr *bdescr)
 	BOARD_InitI2cPins(bdescr);
 	BOARD_InitI2sPins(bdescr);
 	BOARD_InitTpmPins(bdescr);
-	if (!!(bdescr->bfeatures & (FEAT_QSPI_FLASH | FEAT_QSPI_FLASH)))
+	if (!!(bdescr->bfeatures & (FEAT_QSPI_FLASH | FEAT_QSPI_PSRAM)))
 		BOARD_InitFLEXSPIPins(bdescr);
 	BOARD_InitJTAGPins(bdescr);
 	BOARD_InitSPIPins(bdescr);
