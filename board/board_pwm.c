@@ -217,9 +217,10 @@ int init_pwm_adapter(struct pwm_adapter *pwm_adapter, struct dev *tpm_devs, enum
 #endif /* CONFIG_BOARD_PICOCOREMX8ULP */
 #ifdef CONFIG_BOARD_OSMSFMX8ULP
     case BT_OSMSFMX8ULP:
-    pwm_chip = pvPortMalloc(sizeof(struct pwm_chip) * 3);
+        pwm_chip = pvPortMalloc(sizeof(struct pwm_chip) * 3);
         if (!pwm_chip)
-        return -ENOMEM;
+            return -ENOMEM;
+
         pwm_adapter->num_chips = 3;
         pwm_adapter->pwm_chip = pwm_chip;
         /* PWM_2 */
@@ -229,9 +230,21 @@ int init_pwm_adapter(struct pwm_adapter *pwm_adapter, struct dev *tpm_devs, enum
         /* PWM_3 & PWM_4 */
         __init_pwm_handle(&pwm_chip[2], &tpm_devs[2], 3, 2);
         break;
-#endif /* CONFIG_BOARD_PICOCOREMX8ULP */
+#endif /* CONFIG_BOARD_OSMSFMX8ULP */
 #ifdef CONFIG_BOARD_ARMSTONEMX8ULP
     case BT_ARMSTONEMX8ULP:
+        pwm_chip = pvPortMalloc(sizeof(struct pwm_chip) * 3);
+        if (!pwm_chip)
+            return -ENOMEM;
+
+        pwm_adapter->num_chips = 3;
+        pwm_adapter->pwm_chip = pwm_chip;
+        /* PWM_1 */
+        __init_pwm_handle(&pwm_chip[1], &tpm_devs[1], 1, 2);
+        /* PWM_2 */
+        __init_pwm_handle(&pwm_chip[0], &tpm_devs[2], 2, 2);
+        /* PWM_3 & PWM_4 */
+        __init_pwm_handle(&pwm_chip[2], &tpm_devs[3], 3, 6);
         break;
 #endif
     default:

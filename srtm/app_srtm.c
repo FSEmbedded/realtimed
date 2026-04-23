@@ -27,6 +27,7 @@
 #include <srtm/srtm_sai_edma_adapter.h>
 #include <srtm/srtm_uart_service.h>
 #include <srtm/srtm_keypad_service.h>
+#include <srtm/srtm_spi_service.h>
 #include <board/board.h>
 #include <board/board_i2c.h>
 #include <board/board_sai.h>
@@ -91,6 +92,7 @@ static int64_t apd_boot_cnt = 0; /* it's cold boot when apd_boot_cnt(Application
 
 static bool support_dsl_for_apd = false; /* true: support deep sleep mode; false: not support deep sleep mode */
 static struct _srtm_uart_adapter uartAdapter;
+static struct _srtm_spi_adapter spi_adapter;
 static srtm_sai_adapter_t saiAdapter;
 static srtm_service_t audioService;
 
@@ -677,6 +679,10 @@ static void APP_SRTM_Linkup(void)
     chan               = SRTM_RPMsgEndpoint_Create(&rpmsgConfig);
     SRTM_PeerCore_AddChannel(core, chan);
 
+    rpmsgConfig.epName = APP_SRTM_SPI_CHANNEL_NAME;
+    chan               = SRTM_RPMsgEndpoint_Create(&rpmsgConfig);
+    SRTM_PeerCore_AddChannel(core, chan);
+
     SRTM_Dispatcher_AddPeerCore(disp, core);
 }
 
@@ -1211,6 +1217,23 @@ static void APP_SRTM_OSM_InitIOSevice(struct board_descr *bdescr)
 }
 #endif /* CONFIG_BOARD_OSMSFMX8ULP */
 
+#ifdef CONFIG_BOARD_ARMSTONEMX8ULP
+static void APP_SRTM_armStone_InitIOSevice(struct board_descr *bdescr)
+{
+    struct io_adapter *io_adapter = &bdescr->io_adapter;
+    /* Register Pins */
+    SRTM_IoService_RegisterPin(srtm_io_adapter.service, CONFIG_GPIOB_IFACEID, ASTONE_GPIOB_CARRIER_PWR_EN, NULL);
+    SRTM_IoService_RegisterPin(srtm_io_adapter.service, CONFIG_GPIOC_IFACEID, ASTONE_GPIOC_WLAN_BT_EN, NULL);
+    SRTM_IoService_RegisterPin(srtm_io_adapter.service, CONFIG_GPIOC_IFACEID, ASTONE_GPIOC_BT_WAKE_HOST, NULL);
+    SRTM_IoService_RegisterPin(srtm_io_adapter.service, CONFIG_GPIOC_IFACEID, ASTONE_GPIOC_WM8904_IRQ, NULL);
+
+    /* Register IRQHandler */
+    IO_RegisterIRQCallback(io_adapter, CONFIG_GPIOA_IFACEID, &APP_SRTM_IO_ISR);
+    IO_RegisterIRQCallback(io_adapter, CONFIG_GPIOB_IFACEID, &APP_SRTM_IO_ISR);
+    IO_RegisterIRQCallback(io_adapter, CONFIG_GPIOC_IFACEID, &APP_SRTM_IO_ISR);
+}
+#endif /* CONFIG_BOARD_ARMSTONEMX8ULP */
+
 static void APP_SRTM_InitIOService(struct board_descr *bdescr)
 {
     enum board_types btype = bdescr->btype;
@@ -1240,8 +1263,7 @@ static void APP_SRTM_InitIOService(struct board_descr *bdescr)
 #endif /* CONFIG_BOARD_OSMSFMX8ULP */
 #ifdef CONFIG_BOARD_ARMSTONEMX8ULP
         case BT_ARMSTONEMX8ULP:
-            // TODO:
-            // APP_SRTM_armStone_InitIOSevice(bdescr);
+            APP_SRTM_armStone_InitIOSevice(bdescr);
             break;
 #endif /* CONFIG_BOARD_ARMSTONEMX8ULP */
 
@@ -1477,6 +1499,29 @@ static void APP_SRTM_InitUartService(struct board_descr *bdescr)
     SRTM_Dispatcher_RegisterService(disp, uartAdapter.service);
 }
 
+static void APP_SRTM_InitSpiService(struct board_descr *bdescr)
+{
+    srtm_status_t status;
+    PRINTF("APP_SRTM: Start %s\r\n", __func__);
+    spi_adapter.spi_adapter = &bdescr->spi_adapter;
+
+    for (int i = 0; i < spi_adapter.spi_adapter->num_iface; i++) {
+        spi_adapter.spi_adapter->ops.init(spi_adapter.spi_adapter, &spi_adapter.spi_adapter->spi_iface[i]);
+    }
+
+    SRTM_SpiService_Create(&spi_adapter);
+    if (spi_adapter.service == NULL) {
+        PRINTF("APP_SRTM: Failed to create SPI service\r\n");
+        return;
+    }
+
+    status = SRTM_Dispatcher_RegisterService(disp, spi_adapter.service);
+    PRINTF("SRTM Dispatcher gestartet!\r\n");
+    if (status != SRTM_Status_Success) {
+        PRINTF("APP_SRTM: Failed to register SPI service (status=%d)\r\n", status);
+    }
+}
+
 static void APP_SRTM_InitServices(struct board_descr *bdescr)
 {
     APP_SRTM_InitI2CService(bdescr);
@@ -1486,6 +1531,7 @@ static void APP_SRTM_InitServices(struct board_descr *bdescr)
     APP_SRTM_InitAudioService(bdescr);
     APP_SRTM_InitUartService(bdescr);
     APP_SRTM_InitIoKeyService();
+    APP_SRTM_InitSpiService(bdescr);
 
     EnableIRQ(BBNSM_IRQn);
 }

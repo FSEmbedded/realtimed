@@ -177,7 +177,8 @@ int init_uart_adapter(struct uart_adapter *uart_adapter, struct dev *uart_devs, 
             if(!iuart)
                 return -ENOMEM;
 
-            ret = __init_uart_iface(&iuart[0], &uart_devs[2], 2);
+            /* UART_B */
+            ret = __init_uart_iface(&iuart[0], &uart_devs[0], 1);
             if(ret){
                 vPortFree(iuart);
                 return ret;
@@ -224,7 +225,7 @@ int init_dbg_info(struct dbg_info *dbg_info, struct dev *uart_devs, struct board
             ret = __init_uart_iface(uart_iface, &uart_devs[0], 0);
             break;
         case BT_ARMSTONEMX8ULP:
-            ret = __init_uart_iface(uart_iface, &uart_devs[0], 0);
+            ret = __init_uart_iface(uart_iface, &uart_devs[2], 0);
             break;
         default:
             ret = -EINVAL;
