@@ -1209,6 +1209,9 @@ static void APP_SRTM_OSM_InitIOSevice(struct board_descr *bdescr)
     SRTM_IoService_RegisterPin(srtm_io_adapter.service, CONFIG_GPIOC_IFACEID, OSM_GPIOC_GPIO_A_0, NULL);
     SRTM_IoService_RegisterPin(srtm_io_adapter.service, CONFIG_GPIOC_IFACEID, OSM_GPIOC_GPIO_A_1, NULL);
     SRTM_IoService_RegisterPin(srtm_io_adapter.service, CONFIG_GPIOC_IFACEID, OSM_GPIOC_GPIO_A_2, NULL);
+    SRTM_IoService_RegisterPin(srtm_io_adapter.service, CONFIG_GPIOC_IFACEID, OSM_GPIOC_GPIO_A_3, NULL);
+    SRTM_IoService_RegisterPin(srtm_io_adapter.service, CONFIG_GPIOC_IFACEID, OSM_GPIOC_GPIO_A_4, NULL);
+    SRTM_IoService_RegisterPin(srtm_io_adapter.service, CONFIG_GPIOC_IFACEID, OSM_GPIOC_GPIO_A_5, NULL);
 
     /* Register IRQHandler */
     IO_RegisterIRQCallback(io_adapter, CONFIG_GPIOA_IFACEID, &APP_SRTM_IO_ISR);
@@ -1516,7 +1519,6 @@ static void APP_SRTM_InitSpiService(struct board_descr *bdescr)
     }
 
     status = SRTM_Dispatcher_RegisterService(disp, spi_adapter.service);
-    PRINTF("SRTM Dispatcher gestartet!\r\n");
     if (status != SRTM_Status_Success) {
         PRINTF("APP_SRTM: Failed to register SPI service (status=%d)\r\n", status);
     }

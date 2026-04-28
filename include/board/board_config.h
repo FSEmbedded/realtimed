@@ -72,6 +72,9 @@
 #define OSM_GPIOC_GPIO_A_0  0
 #define OSM_GPIOC_GPIO_A_1  3
 #define OSM_GPIOC_GPIO_A_2  11
+#define OSM_GPIOC_GPIO_A_3  13
+#define OSM_GPIOC_GPIO_A_4  14
+#define OSM_GPIOC_GPIO_A_5  15
 #endif
 
 #if defined(CONFIG_BOARD_ARMSTONEMX8ULP)
