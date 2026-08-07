@@ -57,7 +57,7 @@
         "ARMGCC_DIR": "/home/claudio/.mcuxpressotools/arm-gnu-toolchain-14.2.rel1-x86_64-arm-none-eabi",
         "SdkRootDirPath": "/home/claudio/Dokumente/MCUXPRESSO/imx8ulp/__repo__",
         "POSTPROCESS_UTILITY": "/home/claudio/.mcuxpressotools/mcux-fixelf-14.2.2/mcux-fixelf",
-        "MCUX_VENV_PATH": "/home/claudio/.mcuxpressotools/.venv_3_13/bin",
+        "MCUX_VENV_PATH": "/home/claudio/.mcuxpressotools/.mcux-venv-3.12/bin",
         "PATH": "$env{MCUX_VENV_PATH};$penv{PATH}",
         "CMAKE_EXPORT_COMPILE_COMMANDS": "ON"
       }
