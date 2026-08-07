@@ -1198,6 +1198,7 @@ static void APP_SRTM_OSM_InitIOSevice(struct board_descr *bdescr)
 {
     struct io_adapter *io_adapter = &bdescr->io_adapter;
     /* Register Pins */
+    SRTM_IoService_RegisterPin(srtm_io_adapter.service, CONFIG_GPIOA_IFACEID, OSM_GPIOA_GPIO_A_7, NULL);
     SRTM_IoService_RegisterPin(srtm_io_adapter.service, CONFIG_GPIOA_IFACEID, OSM_GPIOA_GPIO_B_3, NULL);
     SRTM_IoService_RegisterPin(srtm_io_adapter.service, CONFIG_GPIOA_IFACEID, OSM_GPIOA_GPIO_B_4, NULL);
     SRTM_IoService_RegisterPin(srtm_io_adapter.service, CONFIG_GPIOA_IFACEID, OSM_GPIOA_CARRIER_PWR_EN, NULL);
