@@ -9,8 +9,6 @@ The following services are currently supported for Linux
 - PWM services
 - LPAudio services
 - UART services
-
-TODOs:
 - SPI-Services
 
 ## Import Project with MCUXpresso for VS Code
